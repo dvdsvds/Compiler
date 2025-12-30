@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.20)
 project(Compiler LANGUAGES CXX)
 
 add_executable(compiler
-    src/test.cpp
+    test/test.cpp
+    src/lexer.cpp
 )
 
 target_include_directories(compiler PRIVATE

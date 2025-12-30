@@ -1,0 +1,24 @@
+#pragma once
+#include <string>
+
+enum class Token {
+    RECORD, ENUM, IF, ELSE, WHILE, FOR, IN, RETURN, BREAK, CONTINUE, SWITCH, CASE, DEFAULT, ASM, SEND, RECV, NULL_KW,
+    S8, S16, S32, US8, US16, US32, BOOL, TRUE, FALSE,
+    IDENTIFIER, NUMBER, STRING ,CHAR,
+    PLUS, MINUS, STAR, SLASH, PERCENT,
+    EQ, NE, LT, GT, LE, GE,
+    AND, OR, NOT,
+    BIT_AND, BIT_OR, BIT_XOR, BIT_NOT, SHL, SHR,
+    ASSIGN, PLUS_EQ, MINUS_EQ, STAR_EQ, SLASH_EQ, PERCENT_EQ, AND_EQ, OR_EQ, XOR_EQ, SHL_EQ, SHR_EQ,
+    INC, DEC,
+    LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET, SEMICOLON, COLON, COMMA, DOT,
+    ARROW, RARROW, LARROW, HASH, AS,
+    EOF_TOKEN, INVALID
+};
+
+struct TokenData {
+    Token type;
+    std::string value;
+    int line;
+    int column;
+};

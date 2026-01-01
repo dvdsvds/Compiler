@@ -4,6 +4,7 @@ LiteralExpr::LiteralExpr(Token tokenType, const std::string& value) : tokenType(
 void LiteralExpr::accept(Visitor* v) { v->visit(this); }
 
 VariableExpr::VariableExpr(const std::string& name) : name(name) {}
+std::string VariableExpr::getName() const { return name; }
 void VariableExpr::accept(Visitor* v) { v->visit(this); }
 
 BinaryExpr::BinaryExpr(Expr* left, Token op, Expr* right) : left(left), op(op), right(right) {}
@@ -36,7 +37,7 @@ void ForStmt::accept(Visitor* v) { v->visit(this); }
 ReturnStmt::ReturnStmt(Expr* returnValue) : returnValue(returnValue) {}
 void ReturnStmt::accept(Visitor* v) { v->visit(this); }
 
-SendStmt::SendStmt(const std::string& targetName, Expr* sendValue) : targetName(targetName), sendValue(sendValue) {}
+SendStmt::SendStmt(const std::string& variableName, const std::string& targetName) : variableName(variableName), targetName(targetName) {}
 void SendStmt::accept(Visitor* v) { v->visit(this); }
 
 RecvStmt::RecvStmt(const std::string& variableName, const std::string& srcFunction) : variableName(variableName), srcFunction(srcFunction) {}

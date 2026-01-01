@@ -27,6 +27,7 @@ class VariableExpr : public Expr {
         std::string name;
     public:
         VariableExpr(const std::string& name);
+        std::string getName() const;
         void accept(Visitor* v) override;
 };
 
@@ -126,10 +127,10 @@ class ReturnStmt : public Stmt {
 
 class SendStmt : public Stmt {
     private:
+        std::string variableName;
         std::string targetName;
-        Expr* sendValue;
     public:
-        SendStmt(const std::string& targetName, Expr* sendValue);
+        SendStmt(const std::string& variableName, const std::string& targetName);
         void accept(Visitor* v) override;
 };
 

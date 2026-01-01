@@ -4,6 +4,8 @@ project(Compiler LANGUAGES CXX)
 add_executable(compiler
     test/test.cpp
     src/lexer.cpp
+    src/ast.cpp
+    src/parser.cpp
 )
 
 target_include_directories(compiler PRIVATE

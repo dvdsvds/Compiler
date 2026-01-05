@@ -14,3 +14,20 @@ Symbol* Scope::lookup(const std::string& name) {
 
     return nullptr;
 }
+
+bool Scope::exists(const std::string& name) {
+    auto value = symbol_repository.find(name);
+    if(value != symbol_repository.end()) {
+        return true;
+    }
+
+    return false;
+}
+
+Scope* Scope::get_parent() const {
+    return parent;
+}
+
+int32_t Scope::get_level() const {
+    return scope_level;
+}

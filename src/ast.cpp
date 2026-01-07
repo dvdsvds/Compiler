@@ -1,57 +1,116 @@
 #include "ast.hpp"
+ASTNode::ASTNode(int32_t line, int32_t column) : line(line), column(column) {}
+int32_t ASTNode::get_line() const { return line; }
+int32_t ASTNode::get_column() const { return column; }
 
-LiteralExpr::LiteralExpr(Token tokenType, const std::string& value) : tokenType(tokenType), value(value) {}
+Expr::Expr(int32_t line, int32_t column) : ASTNode(line, column) {}
+Token Expr::getType() const { return exprType; }
+void Expr::setType(Token type) { exprType = type; }
+
+Stmt::Stmt(int32_t line, int32_t column) : ASTNode(line, column) {}
+
+LiteralExpr::LiteralExpr(Token tokenType, const std::string& value, int32_t line, int32_t column) 
+    : Expr(line, column), tokenType(tokenType), value(value) {}
 void LiteralExpr::accept(Visitor* v) { v->visit(this); }
 
-VariableExpr::VariableExpr(const std::string& name) : name(name) {}
+VariableExpr::VariableExpr(const std::string& name, int32_t line, int32_t column) 
+    : Expr(line, column), name(name) {}
 std::string VariableExpr::getName() const { return name; }
 void VariableExpr::accept(Visitor* v) { v->visit(this); }
 
-BinaryExpr::BinaryExpr(Expr* left, Token op, Expr* right) : left(left), op(op), right(right) {}
+BinaryExpr::BinaryExpr(Expr* left, Token op, Expr* right, int32_t line, int32_t column) 
+    : Expr(line, column), left(left), op(op), right(right) {}
+Expr* BinaryExpr::getLeft() const { return left; }
+Expr* BinaryExpr::getRight() const { return right; }
+Token BinaryExpr::getOP() const { return op; }
 void BinaryExpr::accept(Visitor* v) { v->visit(this); }
 
-UnaryExpr::UnaryExpr(Token op, Expr* operand) : op(op), operand(operand) {}
+UnaryExpr::UnaryExpr(Token op, Expr* operand, int32_t line, int32_t column) 
+    : Expr(line, column), op(op), operand(operand) {}
+Expr* UnaryExpr::getOperand() const { return operand; }
+Token UnaryExpr::getOP() const { return op; }
 void UnaryExpr::accept(Visitor* v) { v->visit(this); }
 
-CallExpr::CallExpr(const std::string& functionName, const std::vector<Expr*>& arguments) : functionName(functionName), arguments(arguments) {}
+CallExpr::CallExpr(const std::string& functionName, const std::vector<Expr*>& arguments, int32_t line, int32_t column) 
+    : Expr(line, column), functionName(functionName), arguments(arguments) {}
+std::string CallExpr::getFunctionName() const { return functionName; }
+std::vector<Expr*> CallExpr::getArguments() const { return arguments; }
 void CallExpr::accept(Visitor* v) { v->visit(this); }
 
-ArrayAccessExpr::ArrayAccessExpr(Expr* arrayName, Expr* index) : arrayName(arrayName), index(index) {}
+ArrayAccessExpr::ArrayAccessExpr(Expr* arrayName, Expr* index, int32_t line, int32_t column) 
+    : Expr(line, column), arrayName(arrayName), index(index) {}
+Expr* ArrayAccessExpr::getArrayName() const { return arrayName; }
+Expr* ArrayAccessExpr::getIndex() const { return index; }
 void ArrayAccessExpr::accept(Visitor* v) { v->visit(this); }
 
-VarDeclStmt::VarDeclStmt(Token type, const std::string& name, Expr* initializer) : type(type), name(name), initializer(initializer) {}
+VarDeclStmt::VarDeclStmt(Token type, const std::string& name, Expr* initializer, int32_t line, int32_t column) 
+    : Stmt(line, column), type(type), name(name), initializer(initializer) {}
+Token VarDeclStmt::getType() const { return type; }
+std::string VarDeclStmt::getName() const { return name; }
+Expr* VarDeclStmt::getInitializer() const { return initializer; }
 void VarDeclStmt::accept(Visitor* v) { v->visit(this); }
 
-AssignStmt::AssignStmt(Expr* target, Expr* value) : target(target), value(value) {}
+AssignStmt::AssignStmt(Expr* target, Expr* value, int32_t line, int32_t column) 
+    : Stmt(line, column), target(target), value(value) {}
+Expr* AssignStmt::getTarget() const { return target; }
+Expr* AssignStmt::getValue() const { return value; }
 void AssignStmt::accept(Visitor* v) { v->visit(this); }
 
-IfStmt::IfStmt(Expr* condition, Stmt* thenBranch, Stmt* elseBranch) : condition(condition), thenBranch(thenBranch), elseBranch(elseBranch) {}
+IfStmt::IfStmt(Expr* condition, Stmt* thenBranch, Stmt* elseBranch, int32_t line, int32_t column) 
+    : Stmt(line, column), condition(condition), thenBranch(thenBranch), elseBranch(elseBranch) {}
+Expr* IfStmt::getCondition() const { return condition; }
+Stmt* IfStmt::getThenBranch() const { return thenBranch; }
+Stmt* IfStmt::getElseBranch() const { return elseBranch; }
 void IfStmt::accept(Visitor* v) { v->visit(this); }
 
-WhileStmt::WhileStmt(Expr* condition, Stmt* body) : condition(condition), body(body) {}
+WhileStmt::WhileStmt(Expr* condition, Stmt* body, int32_t line, int32_t column) 
+    : Stmt(line, column), condition(condition), body(body) {}
+Expr* WhileStmt::getCondition() const { return condition; }
+Stmt* WhileStmt::getBody() const { return body; }
 void WhileStmt::accept(Visitor* v) { v->visit(this); }
 
-ForStmt::ForStmt(Stmt* initializer, Expr* condition, Expr* increment, Stmt* body) : initializer(initializer), condition(condition), increment(increment), body(body) {}
+ForStmt::ForStmt(Stmt* initializer, Expr* condition, Expr* increment, Stmt* body, int32_t line, int32_t column) 
+    : Stmt(line, column), initializer(initializer), condition(condition), increment(increment), body(body) {}
+Stmt* ForStmt::getInitializer() const { return initializer; }
+Expr* ForStmt::getCondition() const { return condition; }
+Expr* ForStmt::getIncrement() const {return increment; }
+Stmt* ForStmt::getBody() const { return body; }
 void ForStmt::accept(Visitor* v) { v->visit(this); }
 
-ReturnStmt::ReturnStmt(Expr* returnValue) : returnValue(returnValue) {}
+ReturnStmt::ReturnStmt(Expr* returnValue, int32_t line, int32_t column) 
+    : Stmt(line, column), returnValue(returnValue) {}
+Expr* ReturnStmt::getReturnValue() const { return returnValue; }
 void ReturnStmt::accept(Visitor* v) { v->visit(this); }
 
-SendStmt::SendStmt(const std::string& variableName, const std::string& targetName) : variableName(variableName), targetName(targetName) {}
+SendStmt::SendStmt(const std::string& variableName, const std::string& targetName, int32_t line, int32_t column) 
+    : Stmt(line, column), variableName(variableName), targetName(targetName) {}
+std::string SendStmt::getVariableName() const { return variableName; }
+std::string SendStmt::getTargetName() const { return targetName; }
 void SendStmt::accept(Visitor* v) { v->visit(this); }
 
-RecvStmt::RecvStmt(const std::string& variableName, const std::string& srcFunction) : variableName(variableName), srcFunction(srcFunction) {}
+RecvStmt::RecvStmt(const std::string& variableName, const std::string& srcFunction, int32_t line, int32_t column) 
+    : Stmt(line, column), variableName(variableName), srcFunction(srcFunction) {}
 void RecvStmt::accept(Visitor* v) { v->visit(this); }
 
-BlockStmt::BlockStmt(const std::vector<Stmt*>& statements) : statements(statements) {}
+BlockStmt::BlockStmt(const std::vector<Stmt*>& statements, int32_t line, int32_t column) 
+    : Stmt(line, column), statements(statements) {}
+std::vector<Stmt*> BlockStmt::getStatements() const { return statements; }
 void BlockStmt::accept(Visitor* v) { v->visit(this); }
 
-ExprStmt::ExprStmt(Expr* expression) : expression(expression) {}
+ExprStmt::ExprStmt(Expr* expression, int32_t line, int32_t column) 
+    : Stmt(line, column), expression(expression) {}
+Expr* ExprStmt::getExpression() const { return expression; }
 void ExprStmt::accept(Visitor* v) { v->visit(this); }
 
-FunctionDecl::FunctionDecl(const std::string& name, const std::vector<Parameter>& parameters, Token returnType, Stmt* body) :
-    name(name), parameters(parameters), returnType(returnType), body(body) {}
+FunctionDecl::FunctionDecl(const std::string& name, const std::vector<Parameter>& parameters, Token returnType, Stmt* body, int32_t line, int32_t column) 
+    : ASTNode(line, column), name(name), parameters(parameters), returnType(returnType), body(body) {}
+std::string FunctionDecl::getName() const { return name; }
+std::vector<Parameter> FunctionDecl::getParameters() const { return parameters; }
+Token FunctionDecl::getReturnType() const { return returnType; }
+Stmt* FunctionDecl::getBody() const { return body; }
 void FunctionDecl::accept(Visitor* v) { v->visit(this); }
 
-Program::Program(const std::vector<FunctionDecl*>& functions) : functions(functions) {}
+Program::Program(const std::vector<FunctionDecl*>& functions, int32_t line, int32_t column) 
+    : ASTNode(line, column), functions(functions) {}
+std::vector<FunctionDecl*> Program::getFunctions() const { return functions; }
 void Program::accept(Visitor* v) { v->visit(this); }

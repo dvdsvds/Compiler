@@ -40,6 +40,13 @@ Symbol* SymbolTable::lookup(const std::string& name) {
     return nullptr;
 }
 
+Symbol* SymbolTable::lookup_current_scope(const std::string& name) const {
+    if(stack.empty()) {
+        return nullptr;
+    }
+    return stack.back()->lookup(name);
+}
+
 int32_t SymbolTable::curr_scope() const {
     return curr_scope_level;
 }

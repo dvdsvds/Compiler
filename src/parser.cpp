@@ -1,6 +1,6 @@
-#include "parser.hpp"
 #include <stdexcept>
 #include <iostream>
+#include "parser.hpp"
 
 Parser::Parser(const std::vector<TokenData>& tokens) : tokens(tokens), curr_pos(0) {}
 
@@ -9,34 +9,35 @@ Program* Parser::parse() {
     while(!isAtEnd()) {
         functions.push_back(parseFunction());
     }
-    return new Program(functions);
+    return new Program(functions, 0, 0);
 }
+
 Token Parser::peek() {
     if(curr_pos >= tokens.size()) {
         return Token::EOF_TOKEN;
     }
     return tokens[curr_pos].type;
 }
+
 Token Parser::advance() {
     if(isAtEnd()) {
         return Token::EOF_TOKEN;
     }
-
     Token curr_type = tokens[curr_pos].type;
     curr_pos++;
     return curr_type;
 }
+
 bool Parser::check(Token type) {
     if(isAtEnd()) {
         return false;
     }
-
     if(peek() == type) {
         return true;
     }
-
     return false;
 }
+
 bool Parser::match(Token type) {
     if(check(type)) {
         advance();
@@ -44,9 +45,11 @@ bool Parser::match(Token type) {
     }
     return false;
 }
+
 bool Parser::isAtEnd() {
     return curr_pos >= tokens.size() || peek() == Token::EOF_TOKEN;
 }
+
 void Parser::expect(Token type) {
     if(!check(type)) {
         std::string error = "Expected token type " + std::to_string(static_cast<int>(type)) + 
@@ -56,10 +59,24 @@ void Parser::expect(Token type) {
     }
     advance();
 }
+
+int32_t Parser::getLine() {
+    if(curr_pos >= tokens.size()) return 0;
+    return tokens[curr_pos].line;
+}
+
+int32_t Parser::getColumn() {
+    if(curr_pos >= tokens.size()) return 0;
+    return tokens[curr_pos].column;
+}
+
 Expr* Parser::parseExpression() {
     return parseAssignment();
 }
+
 Expr* Parser::parseAssignment() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
     Expr* left = parseLogicalOr();
     Token op;
     if(match(Token::ASSIGN)){
@@ -87,63 +104,75 @@ Expr* Parser::parseAssignment() {
     } else {
         return left;
     }
-
     Expr* right = parseAssignment();
-    return new BinaryExpr(left, op, right);
+    return new BinaryExpr(left, op, right, line, column);
 }
+
 Expr* Parser::parseLogicalOr() {
     Expr* left = parseLogicalAnd();
     while(match(Token::OR)) {
+        int32_t line = getLine();
+        int32_t column = getColumn();
         Token op = Token::OR;
         Expr* right = parseLogicalAnd();
-        left = new BinaryExpr(left, op, right);
+        left = new BinaryExpr(left, op, right, line, column);
     }
-
     return left;
-} 
+}
+
 Expr* Parser::parseLogicalAnd() {
     Expr* left = parseBitwiseOr();
     while(match(Token::AND)) {
+        int32_t line = getLine();
+        int32_t column = getColumn();
         Token op = Token::AND;
         Expr* right = parseBitwiseOr();
-        left = new BinaryExpr(left, op, right);
+        left = new BinaryExpr(left, op, right, line, column);
     }
-
     return left;
 }
+
 Expr* Parser::parseBitwiseOr() {
     Expr* left = parseBitwiseXor();
     while(match(Token::BIT_OR)) {
+        int32_t line = getLine();
+        int32_t column = getColumn();
         Token op = Token::BIT_OR;
         Expr* right = parseBitwiseXor();
-        left = new BinaryExpr(left, op, right);
+        left = new BinaryExpr(left, op, right, line, column);
     }
-
     return left;
-} 
+}
+
 Expr* Parser::parseBitwiseXor() {
     Expr* left = parseBitwiseAnd();
     while(match(Token::BIT_XOR)) {
+        int32_t line = getLine();
+        int32_t column = getColumn();
         Token op = Token::BIT_XOR;
         Expr* right = parseBitwiseAnd();
-        left = new BinaryExpr(left, op, right);
+        left = new BinaryExpr(left, op, right, line, column);
     }
-
     return left;
 }
+
 Expr* Parser::parseBitwiseAnd() {
     Expr* left = parseEquality();
     while(match(Token::BIT_AND)) {
+        int32_t line = getLine();
+        int32_t column = getColumn();
         Token op = Token::BIT_AND;
         Expr* right = parseEquality();
-        left = new BinaryExpr(left, op, right);
+        left = new BinaryExpr(left, op, right, line, column);
     }
-
     return left;
 }
+
 Expr* Parser::parseEquality() {
     Expr* left = parseRelational();
     while(true) {
+        int32_t line = getLine();
+        int32_t column = getColumn();
         Token op;
         if(match(Token::EQ)) {
             op = Token::EQ;
@@ -153,13 +182,16 @@ Expr* Parser::parseEquality() {
             break;
         }
         Expr* right = parseRelational();
-        left = new BinaryExpr(left, op, right);
+        left = new BinaryExpr(left, op, right, line, column);
     }
     return left;
-} 
+}
+
 Expr* Parser::parseRelational() {
     Expr* left = parseShift();
     while(true) {
+        int32_t line = getLine();
+        int32_t column = getColumn();
         Token op;
         if(match(Token::LT)) {
             op = Token::LT;
@@ -173,14 +205,16 @@ Expr* Parser::parseRelational() {
             break;
         }
         Expr* right = parseShift();
-        left = new BinaryExpr(left, op, right);
+        left = new BinaryExpr(left, op, right, line, column);
     }
-
     return left;
 }
+
 Expr* Parser::parseShift() {
     Expr* left = parseAdditive();
     while(true) {
+        int32_t line = getLine();
+        int32_t column = getColumn();
         Token op;
         if(match(Token::SHL)) {
             op = Token::SHL;
@@ -189,16 +223,17 @@ Expr* Parser::parseShift() {
         } else {
             break;
         }
-
         Expr* right = parseAdditive();
-        left = new BinaryExpr(left, op, right);
+        left = new BinaryExpr(left, op, right, line, column);
     }
-
     return left;
-} 
+}
+
 Expr* Parser::parseAdditive() {
     Expr* left = parseMultiplicative();
     while(true) {
+        int32_t line = getLine();
+        int32_t column = getColumn();
         Token op;
         if(match(Token::PLUS)) {
             op = Token::PLUS;
@@ -207,16 +242,17 @@ Expr* Parser::parseAdditive() {
         } else {
             break;
         }
-
         Expr* right = parseMultiplicative();
-        left = new BinaryExpr(left, op, right);
+        left = new BinaryExpr(left, op, right, line, column);
     }
-
     return left;
 }
+
 Expr* Parser::parseMultiplicative() {
     Expr* left = parseUnary();
     while(true) {
+        int32_t line = getLine();
+        int32_t column = getColumn();
         Token op;
         if(match(Token::STAR)) {
             op = Token::STAR;
@@ -227,14 +263,15 @@ Expr* Parser::parseMultiplicative() {
         } else {
             break;
         }
-
         Expr* right = parseUnary();
-        left = new BinaryExpr(left, op, right);
+        left = new BinaryExpr(left, op, right, line, column);
     }
-
     return left;
-} 
+}
+
 Expr* Parser::parseUnary() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
     Token op;
     if(match(Token::MINUS)) {
         op = Token::MINUS;
@@ -250,19 +287,20 @@ Expr* Parser::parseUnary() {
         return parsePostfix();
     }
     Expr* operand = parseUnary();
-    return new UnaryExpr(op, operand);
-}   
+    return new UnaryExpr(op, operand, line, column);
+}
+
 Expr* Parser::parsePostfix() {
     Expr* left = parsePrimary();
     while(true) {
+        int32_t line = getLine();
+        int32_t column = getColumn();
         if(match(Token::LPAREN)) {
             VariableExpr* varExpr = dynamic_cast<VariableExpr*>(left);
             if(!varExpr) {
                 throw std::runtime_error("Can only call functions by name");
             }
-
             std::string funcName = varExpr->getName();
-
             std::vector<Expr*> args;
             if(!check(Token::RPAREN)) {
                 while(true) {
@@ -273,39 +311,38 @@ Expr* Parser::parsePostfix() {
                 }
             }
             expect(Token::RPAREN);
-            left = new CallExpr(funcName, args);
+            left = new CallExpr(funcName, args, line, column);
         } else if(match(Token::LBRACKET)) {
             Expr* index = parseExpression();
             expect(Token::RBRACKET);
-            left = new ArrayAccessExpr(left, index);
+            left = new ArrayAccessExpr(left, index, line, column);
         } else {
             break;
         }
     }
-
     return left;
-}  
+}
+
 Expr* Parser::parsePrimary() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
     if(match(Token::NUMBER) || match(Token::STRING) || match(Token::CHAR) || 
        match(Token::TRUE) || match(Token::FALSE) || match(Token::NULL_KW)) {
-        
         Token type = tokens[curr_pos - 1].type;
         std::string value = tokens[curr_pos - 1].value;
-
-        return new LiteralExpr(type, value);
+        return new LiteralExpr(type, value, line, column);
     } else if(match(Token::IDENTIFIER)) {
         std::string name = tokens[curr_pos - 1].value;
-
-        return new VariableExpr(name);
+        return new VariableExpr(name, line, column);
     } else if(match(Token::LPAREN)) {
         Expr* expr = parseExpression();
         expect(Token::RPAREN);
-
         return expr;
     } else {
         throw std::runtime_error("Unexpected token in expression");
     }
-} 
+}
+
 Stmt* Parser::parseStatement() {
     switch(peek()) {
         case Token::S8:
@@ -316,47 +353,70 @@ Stmt* Parser::parseStatement() {
         case Token::US32:
         case Token::BOOL:
             return parseVardecl();
-
         case Token::IF:
             return parseIfStmt();
-        
         case Token::WHILE:
             return parseWhileStmt();
-        
         case Token::FOR:
             return parseForStmt();
-        
         case Token::RETURN:
             return parseReturnStmt();
-        
         case Token::SEND:
             return parseSendStmt();
-        
         case Token::RECV:
             return parseRecvStmt();
-        
         case Token::LBRACE:
             return parseBlock();
-    
         default:
             return parseExprStmt();
     }
 }
+
 Stmt* Parser::parseVardecl() {
-    Token type = advance(); 
+    int32_t line = getLine();
+    int32_t column = getColumn();
+    Token type = advance();
+    if(match(Token::LBRACKET)) {
+        expect(Token::RBRACKET);
+        switch (type) {
+            case Token::S8:
+                type = Token::S8_ARRAY;
+                break;
+            case Token::S16:
+                type = Token::S16_ARRAY;
+                break;
+            case Token::S32:
+                type = Token::S32_ARRAY;
+                break;
+            case Token::US8:
+                type = Token::US8_ARRAY;
+                break;
+            case Token::US16:
+                type = Token::US16_ARRAY;
+                break;
+            case Token::US32:
+                type = Token::US32_ARRAY;
+                break;
+            case Token::BOOL:
+                type = Token::BOOL_ARRAY;
+                break;
+            default:
+                break;
+        }
+    }
     std::string variableName = tokens[curr_pos].value;
     expect(Token::IDENTIFIER);
-
     Expr* initializer = nullptr;
     if(match(Token::ASSIGN)) {
         initializer = parseExpression();
     }
-
     expect(Token::SEMICOLON);
-
-    return new VarDeclStmt(type, variableName, initializer);
+    return new VarDeclStmt(type, variableName, initializer, line, column);
 }
+
 Stmt* Parser::parseIfStmt() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
     expect(Token::IF);
     expect(Token::LPAREN);
     Expr* condition = parseExpression();
@@ -366,22 +426,25 @@ Stmt* Parser::parseIfStmt() {
     if(match(Token::ELSE)) {
         blockElse = parseStatement();
     }
-
-    return new IfStmt(condition, blockThen, blockElse);
+    return new IfStmt(condition, blockThen, blockElse, line, column);
 }
+
 Stmt* Parser::parseWhileStmt() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
     expect(Token::WHILE);
     expect(Token::LPAREN);
     Expr* condition = parseExpression();
     expect(Token::RPAREN);
     Stmt* body = parseStatement();
-
-    return new WhileStmt(condition, body);
+    return new WhileStmt(condition, body, line, column);
 }
+
 Stmt* Parser::parseForStmt() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
     expect(Token::FOR);
     expect(Token::LPAREN);
-
     Stmt* initializer = nullptr;
     Token typeToken = peek();
     switch(typeToken) {
@@ -395,103 +458,128 @@ Stmt* Parser::parseForStmt() {
             initializer = parseVardecl();
             break;
     }
-
     Expr* condition = nullptr;
     if(!check(Token::SEMICOLON)) {
         condition = parseExpression();
     }
     expect(Token::SEMICOLON);
-
     Expr* increment = nullptr;
     if(!check(Token::RPAREN)) {
         increment = parseExpression();
     }
     expect(Token::RPAREN);
-
     Stmt* body = parseStatement();
-
-    return new ForStmt(initializer, condition, increment, body);
+    return new ForStmt(initializer, condition, increment, body, line, column);
 }
-Stmt* Parser::parseReturnStmt() {
-    expect(Token::RETURN);
 
+Stmt* Parser::parseReturnStmt() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
+    expect(Token::RETURN);
     Expr* returnValue = nullptr;
     if(!check(Token::SEMICOLON)) {
         returnValue = parseExpression();
     }
     expect(Token::SEMICOLON);
-
-    return new ReturnStmt(returnValue);
+    return new ReturnStmt(returnValue, line, column);
 }
+
 Stmt* Parser::parseSendStmt() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
     expect(Token::SEND);
     expect(Token::LPAREN);
-
     std::string variableName = tokens[curr_pos].value;
     expect(Token::IDENTIFIER);
     expect(Token::RARROW);
-
     std::string functionName = tokens[curr_pos].value;
     expect(Token::IDENTIFIER);
-
     expect(Token::RPAREN);
     expect(Token::SEMICOLON);
-
-    return new SendStmt(variableName, functionName);
+    return new SendStmt(variableName, functionName, line, column);
 }
+
 Stmt* Parser::parseRecvStmt() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
     expect(Token::RECV);
     expect(Token::LPAREN);
-
     std::string srcFunction = tokens[curr_pos].value;
     expect(Token::IDENTIFIER);
     expect(Token::LARROW);
-
     std::string variableName = tokens[curr_pos].value;
     expect(Token::IDENTIFIER);
-
     expect(Token::RPAREN);
     expect(Token::SEMICOLON);
-
-    return new RecvStmt(variableName, srcFunction);
+    return new RecvStmt(variableName, srcFunction, line, column);
 }
+
 Stmt* Parser::parseExprStmt() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
     Expr* expression = parseExpression();
     expect(Token::SEMICOLON);
-
-    return new ExprStmt(expression);
+    return new ExprStmt(expression, line, column);
 }
-Stmt* Parser::parseBlock() {
-    expect(Token::LBRACE);
 
+Stmt* Parser::parseBlock() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
+    expect(Token::LBRACE);
     std::vector<Stmt*> statements;
     while(!check(Token::RBRACE)) {
         statements.push_back(parseStatement());
     }
-    
     expect(Token::RBRACE);
-
-    return new BlockStmt(statements);
+    return new BlockStmt(statements, line, column);
 }
+
 FunctionDecl* Parser::parseFunction() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
     if(isAtEnd()) {
         throw std::runtime_error("Expected function but got EOF");
     }
-
     std::string name = tokens[curr_pos].value;
     std::cout << "Function name: " << name << std::endl;
     expect(Token::IDENTIFIER);
     std::cout << "After IDENTIFIER" << std::endl;
-
     std::vector<Parameter> parameters;
     expect(Token::LPAREN);
     if(!check(Token::RPAREN)) {
         while(true) {
             Token parameterType = advance();
+            if(match(Token::LBRACKET)) {
+                expect(Token::RBRACKET);
+                switch(parameterType) {
+                    case Token::S8:
+                        parameterType = Token::S8_ARRAY;
+                        break;
+                    case Token::S16:
+                        parameterType = Token::S16_ARRAY;
+                        break;
+                    case Token::S32:
+                        parameterType = Token::S32_ARRAY;
+                        break;
+                    case Token::US8:
+                        parameterType = Token::US8_ARRAY;
+                        break;
+                    case Token::US16:
+                        parameterType = Token::US16_ARRAY;
+                        break;
+                    case Token::US32:
+                        parameterType = Token::US32_ARRAY;
+                        break;
+                    case Token::BOOL:
+                        parameterType = Token::BOOL_ARRAY;
+                        break;
+                    default:
+                        break;
+                }
+            }
             std::string parameterName = tokens[curr_pos].value;
             expect(Token::IDENTIFIER);
             parameters.push_back(Parameter{parameterType, parameterName});
-
             if(!match(Token::COMMA)) {
                 break;
             } else {
@@ -499,11 +587,39 @@ FunctionDecl* Parser::parseFunction() {
             }
         }
     }
-
     expect(Token::RPAREN);
     expect(Token::RARROW);
     Token returnType = advance();
-    Stmt* body = parseBlock();
+
+    if(match(Token::LBRACKET)) {
+        expect(Token::RBRACKET);
+        switch(returnType) {
+            case Token::S8:
+                returnType = Token::S8_ARRAY;
+                break;
+            case Token::S16:
+                returnType = Token::S16_ARRAY;
+                break;
+            case Token::S32:
+                returnType = Token::S32_ARRAY;
+                break;
+            case Token::US8:
+                returnType = Token::US8_ARRAY;
+                break;
+            case Token::US16:
+                returnType = Token::US16_ARRAY;
+                break;
+            case Token::US32:
+                returnType = Token::US32_ARRAY;
+                break;
+            case Token::BOOL:
+                returnType = Token::BOOL_ARRAY;
+                break;
+            default:
+                break;
+            }
+        }
     
-    return new FunctionDecl(name, parameters, returnType, body);
+    Stmt* body = parseBlock();
+    return new FunctionDecl(name, parameters, returnType, body, line, column);
 }

@@ -8,6 +8,9 @@ class Parser {
         std::vector<TokenData> tokens;
         size_t curr_pos;
 
+        int32_t getLine();
+        int32_t getColumn();
+
         Token peek();
         Token advance();
         bool check(Token type);

@@ -90,6 +90,8 @@ void SendStmt::accept(Visitor* v) { v->visit(this); }
 
 RecvStmt::RecvStmt(const std::string& variableName, const std::string& srcFunction, int32_t line, int32_t column) 
     : Stmt(line, column), variableName(variableName), srcFunction(srcFunction) {}
+std::string RecvStmt::getVariableName() const { return variableName; }
+std::string RecvStmt::getSrcFunction() const { return srcFunction; }
 void RecvStmt::accept(Visitor* v) { v->visit(this); }
 
 BlockStmt::BlockStmt(const std::vector<Stmt*>& statements, int32_t line, int32_t column) 

@@ -5,6 +5,20 @@
 
 class SemanticAnalyzer : public Visitor {
     public:
+        struct SendInfo {
+            std::string var_name;
+            std::string target_function;
+            int32_t line, column;
+            SendStmt* node;
+        };
+
+        struct RecvInfo {
+            std::string var_name;
+            std::string src_function;
+            Token type;
+            int32_t line, column;
+        };
+
         enum class errorType {
             VARIABLE_UNDECLARED,
             VARIABLE_REDECLARED,
@@ -26,8 +40,7 @@ class SemanticAnalyzer : public Visitor {
         struct semanticError {
             std::string error_msg;
             errorType type;   
-            int32_t line;
-            int32_t column;
+            int32_t line, column;
         };
 
     private:
@@ -36,6 +49,8 @@ class SemanticAnalyzer : public Visitor {
         TokenData return_type;
         int32_t loop_depth;
         std::map<std::string, bool> out_consumed;
+        std::map<std::string, std::vector<RecvInfo>> function_recvs;
+        std::vector<SendInfo> all_sends;
 
     public:
         SemanticAnalyzer(SymbolTable* track_symbol);

@@ -438,7 +438,26 @@ void SemanticAnalyzer::visit(ReturnStmt* node) {
 };
 
 void SemanticAnalyzer::visit(SendStmt* node) { 
+    Symbol* varSymbol = track_symbol->lookup(node->getVariableName());
+    if(varSymbol == nullptr) {
+        add_error({"", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
+        return;
+    }
+
+    if(!varSymbol->is_out_variable()) {
+        add_error({"", errorType::IN_NON_OUT_VARIABLE, node->get_line(), node->get_column()});
+        return;
+    } 
+
+    all_sends.push_back({
+        node->getVariableName(),
+        node->getTargetName(),
+        node->get_line(),
+        node->get_column(),
+        node
+    });
 };
+
 void SemanticAnalyzer::visit(RecvStmt* node) { 
 };
 
@@ -475,25 +494,57 @@ void SemanticAnalyzer::visit(FunctionDecl* node) {
 
 void SemanticAnalyzer::visit(Program* node) { 
     std::set<std::string> valid_functions;
-    
+    std::vector<TokenData> paramType;
     for(const auto& func : node->getFunctions()) {
         if(track_symbol->lookup_current_scope(func->getName()) != nullptr) {
-            add_error({"", errorType::FUNCTION_REDECLARED, func->get_line(), func->get_column()});
+            add_error({"", errorType::FUNCTION_REDECLARED, node->get_line(), node->get_column()});
             continue;
         }
-        
-        std::vector<TokenData> paramsType;
-        for(const auto& param : func->getParameters()) {
-            paramsType.push_back({param.type, "", func->get_line(), func->get_column()});
+
+        paramType.clear();
+        for(const auto& params : func->getParameters()) {
+            paramType.push_back(TokenData{params.type, "", node->get_line(), node->get_column()});
         }
-        TokenData retType = {func->getReturnType(), "", func->get_line(), func->get_column()};
-        track_symbol->insert(func->getName(), {func->getName(), retType, paramsType, track_symbol->curr_scope()});
+
+        TokenData returnType = TokenData{func->getReturnType(), "", node->get_line(), node->get_column()};
+        track_symbol->insert(func->getName(), Symbol{func->getName(), returnType, paramType, track_symbol->curr_scope()});
         valid_functions.insert(func->getName());
     }
-    
+
     for(const auto& func : node->getFunctions()) {
-        if(valid_functions.count(func->getName()) > 0) {
+        if(valid_functions.find(func->getName()) != valid_functions.end()) {
             func->accept(this);
+        }
+    }
+
+    for(const auto& send_info : all_sends) {
+        Symbol* targetFunc = track_symbol->lookup(send_info.target_function);
+        if(targetFunc == nullptr || !targetFunc->is_func()) {
+            add_error({"", errorType::FUNCTION_UNDECLARED, send_info.line, send_info.column});
+            continue;
+        }
+
+        bool found = false;
+        for(const auto& recv_info : function_recvs[send_info.target_function]) {
+            if(recv_info.var_name == send_info.var_name) {
+                found = true;
+                if(recv_info.type != track_symbol->lookup(send_info.var_name)->get_type().type) {
+                    add_error({"", errorType::SEND_RECV_TYPE_INCONSISTENCY, send_info.line, send_info.column});
+                    break;
+                }
+
+                Symbol* sendVar = track_symbol->lookup(send_info.var_name);
+                if(sendVar->is_consumed()) {
+                    add_error({"", errorType::OUT_ALREADY_CONSUMED, send_info.line, send_info.column});
+                    break;
+                }
+                sendVar->mark_as_consumed();
+                break;
+            } 
+        }
+        if(!found) {
+            add_error({"", errorType::NO_RECV_TARGET, send_info.line, send_info.column});
+            continue;
         }
     }
 }

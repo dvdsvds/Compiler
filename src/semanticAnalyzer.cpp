@@ -2,6 +2,35 @@
 #include <iostream>
 #include <set>
 
+std::string tokenToString(Token t) {
+    switch(t) {
+        case Token::S8: return "s8";
+        case Token::S16: return "s16";
+        case Token::S32: return "s32";
+        case Token::US8: return "us8";
+        case Token::US16: return "us16";
+        case Token::US32: return "us32";
+        case Token::BOOL: return "bool";
+        case Token::VOID: return "void";
+        case Token::NULL_T: return "null";
+        case Token::S8_ARRAY: return "s8[]";
+        case Token::S16_ARRAY: return "s16[]";
+        case Token::S32_ARRAY: return "s32[]";
+        case Token::US8_ARRAY: return "us8[]";
+        case Token::US16_ARRAY: return "us16[]";
+        case Token::US32_ARRAY: return "us32[]";
+        case Token::BOOL_ARRAY: return "bool[]";
+        case Token::PS8: return "ps8";
+        case Token::PS16: return "ps16";
+        case Token::PS32: return "ps32";
+        case Token::PUS8: return "pus8";
+        case Token::PUS16: return "pus16";
+        case Token::PUS32: return "pus32";
+        case Token::INVALID: return "invalid";
+        default: return "unknown";
+    }
+}
+
 SemanticAnalyzer::SemanticAnalyzer(SymbolTable* track_symbol) 
     : track_symbol(track_symbol), loop_depth(0), return_type{Token::INVALID, "", 0, 0} {};
 
@@ -27,13 +56,15 @@ bool SemanticAnalyzer::check_type(const TokenData& expected, const TokenData& ac
     return expected.type == actual.type;
 }
 
-void SemanticAnalyzer::enter_function(const TokenData& ret_type) {
+void SemanticAnalyzer::enter_function(const TokenData& ret_type, const std::string& func_name) {
     return_type = ret_type;
+    curr_function_name = func_name;
     out_consumed.clear();
 }
 
 void SemanticAnalyzer::exit_function() {
     return_type.type = Token::INVALID;
+    curr_function_name = "";
     out_consumed.clear();
 }
 
@@ -42,20 +73,47 @@ bool SemanticAnalyzer::analyze(Program* root) {
     return !has_errors();
 }
 
-void SemanticAnalyzer::visit(LiteralExpr* node) {};
+void SemanticAnalyzer::visit(LiteralExpr* node) {
+    switch(node->getTokenType()) {
+        case Token::NUMBER:
+            node->setType(Token::S32);
+            break;
+
+        case Token::TRUE:
+        case Token::FALSE:
+            node->setType(Token::BOOL);
+            break;
+
+        case Token::STRING:
+            node->setType(Token::S8_ARRAY);
+            break;
+
+        case Token::CHAR:
+            node->setType(Token::S8);
+            break;
+
+        case Token::NULL_KW:
+            node->setType(Token::NULL_T);
+            break;
+        
+        default:
+            node->setType(Token::INVALID);
+            break;
+    }
+};
 
 void SemanticAnalyzer::visit(VariableExpr* node) { 
     std::string name = node->getName();
     Symbol* sym = track_symbol->lookup(name);
     if(sym == nullptr) {
-        add_error({"", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
+        add_error({"Variable '" + name + "' is not declared", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
         return;
     }
-
+    node->setType(sym->get_type().type);
     bool is_out = sym->is_out_variable();
     if(is_out) {
         if(out_consumed.find(name) != out_consumed.end() && out_consumed[name]) {
-            add_error({"", errorType::OUT_ALREADY_CONSUMED, node->get_line(), node->get_column()});
+            add_error({"Variable '" + name + "' is already consumed", errorType::OUT_ALREADY_CONSUMED, node->get_line(), node->get_column()});
         } else {
             out_consumed[name] = true;
         }
@@ -94,13 +152,13 @@ void SemanticAnalyzer::visit(BinaryExpr* node) {
                 } else if(leftType == Token::US32) {
                     node->setType(Token::US32);
                 } else {
-                    add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+                    add_error({"Type mismatch in arithmetic operation: incompatible type " + tokenToString(leftType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                     node->setType(Token::INVALID);
                     return;
                 }
 
             } else {
-                add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+                add_error({"Type mismatch in arithmetic operation: operands must have same type, got " + tokenToString(leftType) + " and " + tokenToString(rightType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                 node->setType(Token::INVALID);
                 return;
             }
@@ -114,13 +172,13 @@ void SemanticAnalyzer::visit(BinaryExpr* node) {
                 if(leftType == Token::S8 || leftType == Token::S16 || leftType == Token::S32 || leftType == Token::US8 || leftType == Token::US16 || leftType == Token::US32) {
                     node->setType(Token::BOOL);
                 } else {
-                    add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+                    add_error({"Type mismatch in comparison: expected integer types, got " + tokenToString(leftType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                     node->setType(Token::INVALID);
                     return;
                 }
 
             } else {
-                add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+                add_error({"Type mismatch in comparison: operand types must match, got " + tokenToString(leftType) + " and " + tokenToString(rightType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                 node->setType(Token::INVALID);
                 return;
             }
@@ -131,7 +189,7 @@ void SemanticAnalyzer::visit(BinaryExpr* node) {
             if(leftType == rightType) {
                 node->setType(Token::BOOL);
             } else {
-                add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+                add_error({"Type mismatch in equality: operand types must match, got " + tokenToString(leftType) + " and " + tokenToString(rightType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                 node->setType(Token::INVALID);
                 return;
             }
@@ -142,7 +200,7 @@ void SemanticAnalyzer::visit(BinaryExpr* node) {
             if((leftType == Token::BOOL) && (rightType == Token::BOOL)) {
                 node->setType(Token::BOOL);
             } else {
-                add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+                add_error({"Type mismatch in logical operation: both operands must be bool, got " + tokenToString(leftType) + " and " + tokenToString(rightType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                 node->setType(Token::INVALID);
                 return;
             }
@@ -167,20 +225,20 @@ void SemanticAnalyzer::visit(BinaryExpr* node) {
                 } else if(leftType == Token::US32) {
                     node->setType(Token::US32);
                 } else {
-                    add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+                    add_error({"Type mismatch in bitwise operation: incompatible type " + tokenToString(leftType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                     node->setType(Token::INVALID);
                     return;
                 }
 
             } else {
-                add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+                add_error({"Type mismatch in bitwise operation: operands must have same type, got " + tokenToString(leftType) + " and " + tokenToString(rightType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                 node->setType(Token::INVALID);
                 return;
             }
             break;
         
         default:
-            add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+            add_error({"Unknown binary operator", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
             node->setType(Token::INVALID);
             break;
     }
@@ -200,7 +258,7 @@ void SemanticAnalyzer::visit(UnaryExpr* node) {
             if(operand_type == Token::BOOL) {
                 node->setType(Token::BOOL);
             } else {
-                add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+                add_error({"Type mismatch: NOT operator requires bool type, got " + tokenToString(operand_type), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                 node->setType(Token::INVALID);
                 return;
             }
@@ -223,13 +281,13 @@ void SemanticAnalyzer::visit(UnaryExpr* node) {
             } else if(operand_type == Token::US32) {
                 node->setType(Token::US32);
             } else {
-                add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+                add_error({"Type mismatch: unary operator requires integer type, got " + tokenToString(operand_type), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                 node->setType(Token::INVALID);
                 return;
             }
             break;
         default:
-            add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+            add_error({"Unknown unary operator", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
             node->setType(Token::INVALID);
             break;
     }
@@ -242,20 +300,20 @@ void SemanticAnalyzer::visit(CallExpr* node) {
 
     Symbol* functionName = track_symbol->lookup(node->getFunctionName());
     if(functionName == nullptr || !(functionName->is_func())) {
-        add_error({"", errorType::FUNCTION_UNDECLARED, node->get_line(), node->get_column()});
+        add_error({"Function '" + node->getFunctionName() + "' is not declared", errorType::FUNCTION_UNDECLARED, node->get_line(), node->get_column()});
         node->setType(Token::INVALID);
         return;
     }
 
     if(node->getArguments().size() != functionName->get_param_types().size()) {
-        add_error({"", errorType::PARAMETER_COUNT_INCONSISTENCY, node->get_line(), node->get_column()});
+        add_error({"Function '" + node->getFunctionName() + "' expects " + std::to_string(functionName->get_param_types().size()) + " arguments, got " + std::to_string(node->getArguments().size()), errorType::PARAMETER_COUNT_INCONSISTENCY, node->get_line(), node->get_column()});
         node->setType(Token::INVALID);
         return;
     }
 
     for(size_t i = 0; i < node->getArguments().size(); i++) {
         if(node->getArguments()[i]->getType() != functionName->get_param_types()[i].type) {
-            add_error({"", errorType::PARAMETER_TYPE_INCONSISTENCY, node->get_line(), node->get_column()});
+            add_error({"Function '" + node->getFunctionName() + "' parameter " + std::to_string(i+1) + " type mismatch: expected " + tokenToString(functionName->get_param_types()[i].type) + ", got " + tokenToString(node->getArguments()[i]->getType()), errorType::PARAMETER_TYPE_INCONSISTENCY, node->get_line(), node->get_column()});
             node->setType(Token::INVALID);
             return;
         }     
@@ -277,7 +335,7 @@ void SemanticAnalyzer::visit(ArrayAccessExpr* node) {
     }
 
     if(indexType != Token::S8 && indexType != Token::S16 && indexType != Token::S32 && indexType != Token::US8 && indexType != Token::US16 && indexType != Token::US32) {
-        add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+        add_error({"Array index must be integer type, got " + tokenToString(indexType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
         node->setType(Token::INVALID);
         return;
     }
@@ -305,7 +363,7 @@ void SemanticAnalyzer::visit(ArrayAccessExpr* node) {
             node->setType(Token::BOOL);
             break;
         default:
-            add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+            add_error({"Array access on non-array type " + tokenToString(arrayType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
             node->setType(Token::INVALID);
             break;
     }
@@ -313,7 +371,7 @@ void SemanticAnalyzer::visit(ArrayAccessExpr* node) {
 
 void SemanticAnalyzer::visit(VarDeclStmt* node) { 
     if(track_symbol->lookup_current_scope(node->getName()) != nullptr) {
-        add_error({"", errorType::VARIABLE_REDECLARED, node->get_line(), node->get_column()});
+        add_error({"Variable '" + node->getName() + "' is already declared in this scope", errorType::VARIABLE_REDECLARED, node->get_line(), node->get_column()});
         return;
     }
 
@@ -324,7 +382,7 @@ void SemanticAnalyzer::visit(VarDeclStmt* node) {
         }
 
         if(node->getType() != node->getInitializer()->getType()) {
-            add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+            add_error({"Variable '" + node->getName() + "' initialization type mismatch: expected " + tokenToString(node->getType()) + ", got " + tokenToString(node->getInitializer()->getType()), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
             return;
         }
     }
@@ -335,7 +393,7 @@ void SemanticAnalyzer::visit(VarDeclStmt* node) {
 
 void SemanticAnalyzer::visit(AssignStmt* node) { 
     if(dynamic_cast<VariableExpr*>(node->getTarget()) == nullptr && dynamic_cast<ArrayAccessExpr*>(node->getTarget()) == nullptr) {
-        add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+        add_error({"Assignment target must be a variable or array element", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
         return;
     }
     node->getTarget()->accept(this);
@@ -349,7 +407,7 @@ void SemanticAnalyzer::visit(AssignStmt* node) {
     }
 
     if(targetType != valueType) {
-        add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+        add_error({"Assignment type mismatch: cannot assign " + tokenToString(valueType) + " to " + tokenToString(targetType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
     }
 };
 
@@ -359,7 +417,7 @@ void SemanticAnalyzer::visit(IfStmt* node) {
         return;
     }
     if(node->getCondition()->getType() != Token::BOOL) {
-        add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+        add_error({"If condition must be bool type, got " + tokenToString(node->getCondition()->getType()), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
         return;
     }
 
@@ -379,7 +437,7 @@ void SemanticAnalyzer::visit(WhileStmt* node) {
     }
     
     if(node->getCondition()->getType() != Token::BOOL) {
-        add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+        add_error({"While condition must be bool type, got " + tokenToString(node->getCondition()->getType()), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
         loop_depth--;
         return;
     }
@@ -403,7 +461,7 @@ void SemanticAnalyzer::visit(ForStmt* node) {
             return;
         }
         if(node->getCondition()->getType() != Token::BOOL) {
-            add_error({"", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+            add_error({"For condition must be bool type, got " + tokenToString(node->getCondition()->getType()), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
             loop_depth--;
             track_symbol->exit_scope();
             return;
@@ -423,15 +481,15 @@ void SemanticAnalyzer::visit(ReturnStmt* node) {
     if(node->getReturnValue() != nullptr) {
         node->getReturnValue()->accept(this);
         if(return_type.type == Token::VOID) {
-            add_error({"", errorType::RETURN_TYPE_INCONSISTENCY, node->get_line(), node->get_column()});
+            add_error({"Cannot return a value from void function", errorType::RETURN_TYPE_INCONSISTENCY, node->get_line(), node->get_column()});
             return;
         } else if(return_type.type != node->getReturnValue()->getType()) {
-            add_error({"", errorType::RETURN_TYPE_INCONSISTENCY, node->get_line(), node->get_column()});
+            add_error({"Return type mismatch: expected " + tokenToString(return_type.type) + ", got " + tokenToString(node->getReturnValue()->getType()), errorType::RETURN_TYPE_INCONSISTENCY, node->get_line(), node->get_column()});
             return;
         }
     } else {
         if(return_type.type != Token::VOID) {
-            add_error({"", errorType::RETURN_TYPE_INCONSISTENCY, node->get_line(), node->get_column()});
+            add_error({"Function must return a value of type " + tokenToString(return_type.type), errorType::RETURN_TYPE_INCONSISTENCY, node->get_line(), node->get_column()});
             return;
         }
     }
@@ -440,12 +498,12 @@ void SemanticAnalyzer::visit(ReturnStmt* node) {
 void SemanticAnalyzer::visit(SendStmt* node) { 
     Symbol* varSymbol = track_symbol->lookup(node->getVariableName());
     if(varSymbol == nullptr) {
-        add_error({"", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
+        add_error({"Variable '" + node->getVariableName() + "' is not declared", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
         return;
     }
 
     if(!varSymbol->is_out_variable()) {
-        add_error({"", errorType::IN_NON_OUT_VARIABLE, node->get_line(), node->get_column()});
+        add_error({"Cannot send non-out variable '" + node->getVariableName() + "'", errorType::IN_NON_OUT_VARIABLE, node->get_line(), node->get_column()});
         return;
     } 
 
@@ -459,6 +517,25 @@ void SemanticAnalyzer::visit(SendStmt* node) {
 };
 
 void SemanticAnalyzer::visit(RecvStmt* node) { 
+    Symbol* var_name = track_symbol->lookup(node->getVariableName()); 
+    if(var_name == nullptr) {
+        add_error({"Variable '" + node->getVariableName() + "' is not declared", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
+        return;
+    }
+
+    Symbol* srcFunc = track_symbol->lookup(node->getSrcFunction());
+    if(srcFunc == nullptr || !srcFunc->is_func()) {
+        add_error({"Function '" + node->getSrcFunction() + "' is not declared", errorType::FUNCTION_UNDECLARED, node->get_line(), node->get_column()});
+        return;
+    }
+
+    function_recvs[curr_function_name].push_back(RecvInfo{
+        node->getVariableName(),
+        node->getSrcFunction(),
+        var_name->get_type().type,
+        node->get_line(),
+        node->get_column()
+    });
 };
 
 void SemanticAnalyzer::visit(BlockStmt* node) { 
@@ -476,11 +553,11 @@ void SemanticAnalyzer::visit(ExprStmt* node) {
 void SemanticAnalyzer::visit(FunctionDecl* node) { 
     track_symbol->enter_scope();
     
-    enter_function({node->getReturnType(), "", node->get_line(), node->get_column()});
+    enter_function({node->getReturnType(), "", node->get_line(), node->get_column()}, node->getName());
     
     for(const auto& param : node->getParameters()) {
         if(track_symbol->lookup_current_scope(param.name) != nullptr) {
-            add_error({"", errorType::VARIABLE_REDECLARED, node->get_line(), node->get_column()});
+            add_error({"Parameter '" + param.name + "' is already declared", errorType::VARIABLE_REDECLARED, node->get_line(), node->get_column()});
             continue;
         }
         TokenData paramType = {param.type, "", node->get_line(), node->get_column()};
@@ -497,7 +574,7 @@ void SemanticAnalyzer::visit(Program* node) {
     std::vector<TokenData> paramType;
     for(const auto& func : node->getFunctions()) {
         if(track_symbol->lookup_current_scope(func->getName()) != nullptr) {
-            add_error({"", errorType::FUNCTION_REDECLARED, node->get_line(), node->get_column()});
+            add_error({"Function '" + func->getName() + "' is already declared", errorType::FUNCTION_REDECLARED, node->get_line(), node->get_column()});
             continue;
         }
 
@@ -520,7 +597,7 @@ void SemanticAnalyzer::visit(Program* node) {
     for(const auto& send_info : all_sends) {
         Symbol* targetFunc = track_symbol->lookup(send_info.target_function);
         if(targetFunc == nullptr || !targetFunc->is_func()) {
-            add_error({"", errorType::FUNCTION_UNDECLARED, send_info.line, send_info.column});
+            add_error({"Send target function '" + send_info.target_function + "' is not declared", errorType::FUNCTION_UNDECLARED, send_info.line, send_info.column});
             continue;
         }
 
@@ -529,13 +606,13 @@ void SemanticAnalyzer::visit(Program* node) {
             if(recv_info.var_name == send_info.var_name) {
                 found = true;
                 if(recv_info.type != track_symbol->lookup(send_info.var_name)->get_type().type) {
-                    add_error({"", errorType::SEND_RECV_TYPE_INCONSISTENCY, send_info.line, send_info.column});
+                    add_error({"Send/Recv type mismatch for variable '" + send_info.var_name + "': send type is " + tokenToString(track_symbol->lookup(send_info.var_name)->get_type().type) + ", recv type is " + tokenToString(recv_info.type), errorType::SEND_RECV_TYPE_INCONSISTENCY, send_info.line, send_info.column});
                     break;
                 }
 
                 Symbol* sendVar = track_symbol->lookup(send_info.var_name);
                 if(sendVar->is_consumed()) {
-                    add_error({"", errorType::OUT_ALREADY_CONSUMED, send_info.line, send_info.column});
+                    add_error({"Out variable '" + send_info.var_name + "' is already consumed", errorType::OUT_ALREADY_CONSUMED, send_info.line, send_info.column});
                     break;
                 }
                 sendVar->mark_as_consumed();
@@ -543,7 +620,7 @@ void SemanticAnalyzer::visit(Program* node) {
             } 
         }
         if(!found) {
-            add_error({"", errorType::NO_RECV_TARGET, send_info.line, send_info.column});
+            add_error({"No matching recv for variable '" + send_info.var_name + "' in function '" + send_info.target_function + "'", errorType::NO_RECV_TARGET, send_info.line, send_info.column});
             continue;
         }
     }

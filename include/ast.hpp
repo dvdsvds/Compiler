@@ -36,6 +36,8 @@ class LiteralExpr : public Expr {
         std::string value; 
     public:
         LiteralExpr(Token tokenType, const std::string& value, int32_t line, int32_t column);
+        Token getTokenType() const;
+        std::string getValue() const;
         void accept(Visitor* v) override;
 };
 

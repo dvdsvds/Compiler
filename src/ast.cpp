@@ -3,7 +3,7 @@ ASTNode::ASTNode(int32_t line, int32_t column) : line(line), column(column) {}
 int32_t ASTNode::get_line() const { return line; }
 int32_t ASTNode::get_column() const { return column; }
 
-Expr::Expr(int32_t line, int32_t column) : ASTNode(line, column) {}
+Expr::Expr(int32_t line, int32_t column) : ASTNode(line, column), exprType(Token::INVALID) {}
 Token Expr::getType() const { return exprType; }
 void Expr::setType(Token type) { exprType = type; }
 
@@ -11,6 +11,8 @@ Stmt::Stmt(int32_t line, int32_t column) : ASTNode(line, column) {}
 
 LiteralExpr::LiteralExpr(Token tokenType, const std::string& value, int32_t line, int32_t column) 
     : Expr(line, column), tokenType(tokenType), value(value) {}
+Token LiteralExpr::getTokenType() const { return tokenType; }
+std::string LiteralExpr::getValue() const { return value; }
 void LiteralExpr::accept(Visitor* v) { v->visit(this); }
 
 VariableExpr::VariableExpr(const std::string& name, int32_t line, int32_t column) 

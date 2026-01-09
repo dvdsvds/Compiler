@@ -6,6 +6,10 @@ add_executable(compiler
     src/lexer.cpp
     src/ast.cpp
     src/parser.cpp
+    src/scope.cpp
+    src/semanticAnalyzer.cpp
+    src/symbol.cpp
+    src/symbolTable.cpp
 )
 
 target_include_directories(compiler PRIVATE

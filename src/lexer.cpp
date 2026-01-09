@@ -25,6 +25,12 @@ Lexer::Lexer(const std::string& src) : source(src), pos(0), line(1), column(0) {
     keywords["us8"] = Token::US8;
     keywords["us16"] = Token::US16;
     keywords["us32"] = Token::US32;
+    keywords["ps8"] = Token::PS8;
+    keywords["ps16"] = Token::PS16;
+    keywords["ps32"] = Token::PS32;
+    keywords["pus8"] = Token::PUS8;
+    keywords["pus16"] = Token::PUS16;
+    keywords["pus32"] = Token::PUS32;
     keywords["bool"] = Token::BOOL;
     keywords["true"] = Token::TRUE;
     keywords["false"] = Token::FALSE;

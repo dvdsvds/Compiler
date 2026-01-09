@@ -51,6 +51,7 @@ class SemanticAnalyzer : public Visitor {
         std::map<std::string, bool> out_consumed;
         std::map<std::string, std::vector<RecvInfo>> function_recvs;
         std::vector<SendInfo> all_sends;
+        std::string curr_function_name;
 
     public:
         SemanticAnalyzer(SymbolTable* track_symbol);
@@ -62,7 +63,7 @@ class SemanticAnalyzer : public Visitor {
         void print_errors();
 
         bool check_type(const TokenData& expected, const TokenData& actual);
-        void enter_function(const TokenData& ret_type); 
+        void enter_function(const TokenData& ret_type, const std::string& func_name); 
         void exit_function();
 
         void visit(LiteralExpr* node) override;

@@ -268,22 +268,42 @@ void SemanticAnalyzer::visit(UnaryExpr* node) {
         case Token::BIT_NOT:
         case Token::INC:
         case Token::DEC:
-            if(operand_type == Token::S8) {
-                node->setType(Token::S8);
-            } else if(operand_type == Token::S16) {
-                node->setType(Token::S16);
-            } else if(operand_type == Token::S32) {
-                node->setType(Token::S32);
-            } else if(operand_type == Token::US8) {
-                node->setType(Token::US8);
-            } else if(operand_type == Token::US16) {
-                node->setType(Token::US16);
-            } else if(operand_type == Token::US32) {
-                node->setType(Token::US32);
+                switch (operand_type) {
+                    case Token::S8: node->setType(Token::S8); break;
+                    case Token::S16: node->setType(Token::S16); break;
+                    case Token::S32: node->setType(Token::S32); break;
+                    case Token::US8: node->setType(Token::US8); break;
+                    case Token::US16: node->setType(Token::US16); break;
+                    case Token::US32: node->setType(Token::US32); break;
+                    default:
+                        add_error({"Type mismatch: unary operator requires integer type, got " + tokenToString(operand_type), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+                        node->setType(Token::INVALID);
+                        return;
+                }
+            break;
+
+        
+        case Token::BIT_AND:
+            if(VariableExpr* varExpr = dynamic_cast<VariableExpr*>(node->getOperand())) {
+                Symbol* symbol = track_symbol->lookup(varExpr->getName());
+                if(symbol) {
+                    symbol->setAddressTaken(true);
+                }
+                switch(operand_type) {
+                    case Token::S8: node->setType(Token::PS8); break;
+                    case Token::S16: node->setType(Token::PS16); break;
+                    case Token::S32: node->setType(Token::PS32); break;
+                    case Token::US8: node->setType(Token::PUS8); break;
+                    case Token::US16: node->setType(Token::PUS16); break;
+                    case Token::US32: node->setType(Token::PUS32); break;
+                    default:
+                        add_error({"Address operator requires integer type variable, got " + tokenToString(operand_type), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+                        node->setType(Token::INVALID);
+                        return;
+                }
             } else {
-                add_error({"Type mismatch: unary operator requires integer type, got " + tokenToString(operand_type), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+                add_error({"Address operator can only be applied to variables", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                 node->setType(Token::INVALID);
-                return;
             }
             break;
         default:
@@ -388,7 +408,7 @@ void SemanticAnalyzer::visit(VarDeclStmt* node) {
     }
 
     TokenData varType = {node->getType(), "", node->get_line(), node->get_column()};
-    track_symbol->insert(node->getName(), {node->getName(), varType, track_symbol->curr_scope(), false});
+    track_symbol->insert(node->getName(), {node->getName(), varType, track_symbol->curr_scope(), false, false});
 };
 
 void SemanticAnalyzer::visit(AssignStmt* node) { 
@@ -561,7 +581,7 @@ void SemanticAnalyzer::visit(FunctionDecl* node) {
             continue;
         }
         TokenData paramType = {param.type, "", node->get_line(), node->get_column()};
-        track_symbol->insert(param.name, {param.name, paramType, track_symbol->curr_scope(), false});
+        track_symbol->insert(param.name, {param.name, paramType, track_symbol->curr_scope(), false, false});
     }
     
     node->getBody()->accept(this);
@@ -584,7 +604,7 @@ void SemanticAnalyzer::visit(Program* node) {
         }
 
         TokenData returnType = TokenData{func->getReturnType(), "", node->get_line(), node->get_column()};
-        track_symbol->insert(func->getName(), Symbol{func->getName(), returnType, paramType, track_symbol->curr_scope()});
+        track_symbol->insert(func->getName(), {func->getName(), returnType, paramType, track_symbol->curr_scope(), false});
         valid_functions.insert(func->getName());
     }
 

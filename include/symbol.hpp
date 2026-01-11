@@ -5,8 +5,8 @@
 
 class Symbol {
     public:
-        Symbol(const std::string& name, const TokenData& type, int32_t scope_level, bool is_out);
-        Symbol(const std::string& name, const TokenData& return_type, const std::vector<TokenData>& params, int32_t scope_level);
+        Symbol(const std::string& name, const TokenData& type, int32_t scope_level, bool is_out, bool address_taken);
+        Symbol(const std::string& name, const TokenData& return_type, const std::vector<TokenData>& params, int32_t scope_level, bool address_taken);
 
         enum class SymbolKind { VARIABLE, FUNCTION, PARAMETER };
 
@@ -21,6 +21,8 @@ class Symbol {
         bool is_func() const;
         bool is_var() const;
         bool is_param() const;
+        bool is_address_taken() const;
+        void setAddressTaken(bool taken);
 
         void mark_as_consumed();
     private:
@@ -32,4 +34,5 @@ class Symbol {
         int32_t scope_level;
         bool is_out;
         bool consumed;
+        bool address_taken;
 };

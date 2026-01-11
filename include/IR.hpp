@@ -103,7 +103,7 @@ class IRInstruction {
         static IRInstruction* createIn(Operand* dest);
         static IRInstruction* createCall(Operand* dest, const std::string& func_name, const std::vector<Operand*>& args);
         static IRInstruction* createPhi(Operand* dest, const std::vector<std::pair<Operand*, std::string>>& phi_operands);
-        static IRInstruction* createBranch(Operand* condition, Operand* true_label, Operand* false_label);
+        static IRInstruction* createBranch(Operand* condition, Operand* true_label);
 
         IROpcode getOpcode() const;
         Operand* getDest() const;
@@ -125,7 +125,7 @@ class BasicBlock {
     public:
         BasicBlock(const std::string& label);
 
-        void addInstruction(IRInstruction* insrt);
+        void addInstruction(IRInstruction* insert);
         void addSuccessor(BasicBlock* block);
         void addPredecessor(BasicBlock* block);
         
@@ -149,7 +149,7 @@ class IRFunction {
         IRFunction(const std::string& name, const std::vector<Operand*> parameters, Token return_type);
 
         void addBasicBlock(BasicBlock* block);
-        void setEntryBlock(BasicBlock* entry_block);
+        void setEntryBlock(BasicBlock* entry);
         
         std::string getName() const;
         std::vector<Operand*> getParameters() const;

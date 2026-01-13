@@ -1,20 +1,26 @@
 #pragma once
+#include <set>
 #include "IR.hpp"
 #include "ast.hpp"
+#include "symbolTable.hpp"
 
 class IRBuilder {
     private:
+        SymbolTable* track_symbol;
         IRModule* module;
         IRFunction* curr_function;
         BasicBlock* curr_block;
         int next_vreg;
         int next_label;
         std::map<std::string, Operand*> local_vars;
+        std::map<std::string, bool> var_address_taken;
 
+        std::set<std::string> findModifiedVars(Stmt* stmt);
         Operand* evaluateExpr(Expr* expr);
+        void evaluateStmt(Stmt* stmt);
 
     public:
-        IRBuilder(IRModule* module);
+        IRBuilder(IRModule* module, SymbolTable* track_symbol);
         Operand* newVirtualReg(Token data_type);
         std::string newLabel();
 
@@ -28,8 +34,7 @@ class IRBuilder {
         void visitVarDeclStmt(VarDeclStmt* node);
         void visitAssignStmt(AssignStmt* node);
         void visitIfStmt(IfStmt* node);
-        void visitWhileStmt(WhileStmt* node);
-        void visitForStmt(ForStmt* node);
+        void visitLoopStmt(LoopStmt* node);
         void visitReturnStmt(ReturnStmt* node);
         void visitSendStmt(SendStmt* node);
         void visitRecvStmt(RecvStmt* node);

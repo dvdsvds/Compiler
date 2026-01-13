@@ -75,8 +75,7 @@ class SemanticAnalyzer : public Visitor {
         void visit(VarDeclStmt* node) override;
         void visit(AssignStmt* node) override;
         void visit(IfStmt* node) override;
-        void visit(WhileStmt* node) override;
-        void visit(ForStmt* node) override;
+        void visit(LoopStmt* node) override;
         void visit(ReturnStmt* node) override;
         void visit(SendStmt* node) override;
         void visit(RecvStmt* node) override;

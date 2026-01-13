@@ -101,11 +101,14 @@ class VarDeclStmt : public Stmt {
         Token type;
         std::string name;
         Expr* initializer;
+        bool address_taken;
     public:
         VarDeclStmt(Token type, const std::string& name, Expr* initializer, int32_t line, int32_t column);
         Token getType() const;
         std::string getName() const;
         Expr* getInitializer() const;
+        bool isAddressTaken() const;
+        void setAddressTaken(bool taken);
         void accept(Visitor* v) override;
 };
 
@@ -133,25 +136,15 @@ class IfStmt : public Stmt {
         void accept(Visitor* v) override;
 };
 
-class WhileStmt : public Stmt {
-    private:
-        Expr* condition;
-        Stmt* body;
-    public:
-        WhileStmt(Expr* condition, Stmt* body, int32_t line, int32_t column);
-        Expr* getCondition() const;
-        Stmt* getBody() const;
-        void accept(Visitor* v) override;
-};
-
-class ForStmt : public Stmt {
+class LoopStmt : public Stmt {
     private:
         Stmt* initializer;
         Expr* condition;
         Expr* increment;
         Stmt* body;
+
     public:
-        ForStmt(Stmt* initializer, Expr* condition, Expr* increment, Stmt* body, int32_t line, int32_t column);
+        LoopStmt(Stmt* initializer, Expr* condition, Expr* increment, Stmt* body, int32_t line, int32_t column);
         Stmt* getInitializer() const;
         Expr* getCondition() const;
         Expr* getIncrement() const;

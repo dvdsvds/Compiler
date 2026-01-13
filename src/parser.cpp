@@ -355,10 +355,8 @@ Stmt* Parser::parseStatement() {
             return parseVardecl();
         case Token::IF:
             return parseIfStmt();
-        case Token::WHILE:
-            return parseWhileStmt();
-        case Token::FOR:
-            return parseForStmt();
+        case Token::LOOP:
+            return parseLoopStmt();
         case Token::RETURN:
             return parseReturnStmt();
         case Token::SEND:
@@ -429,47 +427,59 @@ Stmt* Parser::parseIfStmt() {
     return new IfStmt(condition, blockThen, blockElse, line, column);
 }
 
-Stmt* Parser::parseWhileStmt() {
+Stmt* Parser::parseLoopStmt() {
     int32_t line = getLine();
     int32_t column = getColumn();
-    expect(Token::WHILE);
+    expect(Token::LOOP);
     expect(Token::LPAREN);
-    Expr* condition = parseExpression();
-    expect(Token::RPAREN);
-    Stmt* body = parseStatement();
-    return new WhileStmt(condition, body, line, column);
-}
-
-Stmt* Parser::parseForStmt() {
-    int32_t line = getLine();
-    int32_t column = getColumn();
-    expect(Token::FOR);
-    expect(Token::LPAREN);
-    Stmt* initializer = nullptr;
-    Token typeToken = peek();
-    switch(typeToken) {
-        case Token::S8:
-        case Token::S16:
-        case Token::S32:
-        case Token::US8:
-        case Token::US16:
-        case Token::US32:
-        case Token::BOOL:
-            initializer = parseVardecl();
-            break;
+    
+    int semicolonCount = 0;
+    int parenDepth = 1;
+    size_t lookaheadPos = curr_pos;
+    
+    while (parenDepth > 0 && lookaheadPos < tokens.size()) {
+        if (tokens[lookaheadPos].type == Token::LPAREN) {
+            parenDepth++;
+        } else if (tokens[lookaheadPos].type == Token::RPAREN) {
+            parenDepth--;
+        } else if (tokens[lookaheadPos].type == Token::SEMICOLON && parenDepth == 1) {
+            semicolonCount++;
+        }
+        lookaheadPos++;
     }
+    
+    Stmt* init = nullptr;
     Expr* condition = nullptr;
-    if(!check(Token::SEMICOLON)) {
-        condition = parseExpression();
-    }
-    expect(Token::SEMICOLON);
     Expr* increment = nullptr;
-    if(!check(Token::RPAREN)) {
-        increment = parseExpression();
+    
+    if (semicolonCount == 2) {
+        if (peek() != Token::SEMICOLON) {
+            init = parseStatement();
+        } else {
+            expect(Token::SEMICOLON);
+        }
+        
+        if (peek() != Token::SEMICOLON) {
+            condition = parseExpression();
+        }
+        expect(Token::SEMICOLON);
+        
+        if (peek() != Token::RPAREN) {
+            increment = parseExpression();
+        }
+        
+    } else if (semicolonCount == 0) {
+        condition = parseExpression();
+        
+    } else {
+        throw std::runtime_error("loop statement must have either 0 or 2 semicolons");
     }
+    
     expect(Token::RPAREN);
+    
     Stmt* body = parseStatement();
-    return new ForStmt(initializer, condition, increment, body, line, column);
+    
+    return new LoopStmt(init, condition, increment, body, line, column);
 }
 
 Stmt* Parser::parseReturnStmt() {

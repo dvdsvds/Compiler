@@ -37,8 +37,7 @@ class Parser {
         Stmt* parseStatement();
         Stmt* parseVardecl();
         Stmt* parseIfStmt();
-        Stmt* parseWhileStmt();
-        Stmt* parseForStmt();
+        Stmt* parseLoopStmt();
         Stmt* parseReturnStmt();
         Stmt* parseSendStmt();
         Stmt* parseRecvStmt();

@@ -371,3 +371,7 @@ std::string IRModule::toString() const {
     
     return result;
 }
+
+void IRInstruction::addPhiOperand(Operand* value, const std::string& label) {
+    phi_operands.push_back({value, label});
+}

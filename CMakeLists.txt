@@ -10,6 +10,8 @@ add_executable(compiler
     src/semanticAnalyzer.cpp
     src/symbol.cpp
     src/symbolTable.cpp
+    src/IR.cpp
+    src/IRBuilder.cpp
 )
 
 target_include_directories(compiler PRIVATE

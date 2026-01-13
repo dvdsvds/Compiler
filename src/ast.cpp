@@ -46,10 +46,12 @@ Expr* ArrayAccessExpr::getIndex() const { return index; }
 void ArrayAccessExpr::accept(Visitor* v) { v->visit(this); }
 
 VarDeclStmt::VarDeclStmt(Token type, const std::string& name, Expr* initializer, int32_t line, int32_t column) 
-    : Stmt(line, column), type(type), name(name), initializer(initializer) {}
+    : Stmt(line, column), type(type), name(name), initializer(initializer), address_taken(false) {}
 Token VarDeclStmt::getType() const { return type; }
 std::string VarDeclStmt::getName() const { return name; }
 Expr* VarDeclStmt::getInitializer() const { return initializer; }
+bool VarDeclStmt::isAddressTaken() const { return address_taken; }
+void VarDeclStmt::setAddressTaken(bool taken) { address_taken = taken; }
 void VarDeclStmt::accept(Visitor* v) { v->visit(this); }
 
 AssignStmt::AssignStmt(Expr* target, Expr* value, int32_t line, int32_t column) 
@@ -65,19 +67,13 @@ Stmt* IfStmt::getThenBranch() const { return thenBranch; }
 Stmt* IfStmt::getElseBranch() const { return elseBranch; }
 void IfStmt::accept(Visitor* v) { v->visit(this); }
 
-WhileStmt::WhileStmt(Expr* condition, Stmt* body, int32_t line, int32_t column) 
-    : Stmt(line, column), condition(condition), body(body) {}
-Expr* WhileStmt::getCondition() const { return condition; }
-Stmt* WhileStmt::getBody() const { return body; }
-void WhileStmt::accept(Visitor* v) { v->visit(this); }
-
-ForStmt::ForStmt(Stmt* initializer, Expr* condition, Expr* increment, Stmt* body, int32_t line, int32_t column) 
+LoopStmt::LoopStmt(Stmt* initializer, Expr* condition, Expr* increment, Stmt* body, int32_t line, int32_t column)
     : Stmt(line, column), initializer(initializer), condition(condition), increment(increment), body(body) {}
-Stmt* ForStmt::getInitializer() const { return initializer; }
-Expr* ForStmt::getCondition() const { return condition; }
-Expr* ForStmt::getIncrement() const {return increment; }
-Stmt* ForStmt::getBody() const { return body; }
-void ForStmt::accept(Visitor* v) { v->visit(this); }
+Stmt* LoopStmt::getInitializer() const { return initializer;}
+Expr* LoopStmt::getCondition() const { return condition; }
+Expr* LoopStmt::getIncrement() const { return increment; }
+Stmt* LoopStmt::getBody() const { return body; }
+void LoopStmt::accept(Visitor* v) { v->visit(this); }
 
 ReturnStmt::ReturnStmt(Expr* returnValue, int32_t line, int32_t column) 
     : Stmt(line, column), returnValue(returnValue) {}

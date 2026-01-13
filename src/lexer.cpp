@@ -5,8 +5,7 @@ Lexer::Lexer(const std::string& src) : source(src), pos(0), line(1), column(0) {
     keywords["enum"] = Token::ENUM;
     keywords["if"] = Token::IF;
     keywords["else"] = Token::ELSE;
-    keywords["while"] = Token::WHILE;
-    keywords["for"] = Token::FOR;
+    keywords["loop"] = Token::LOOP;
     keywords["in"] = Token::IN;
     keywords["return"] = Token::RETURN;
     keywords["break"] = Token::BREAK;

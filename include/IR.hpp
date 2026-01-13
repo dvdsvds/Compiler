@@ -113,6 +113,7 @@ class IRInstruction {
         std::vector<Operand*> getArgs() const;
         std::vector<std::pair<Operand*, std::string>> getPhi() const;
         std::string toString() const;
+        void addPhiOperand(Operand* value, const std::string& label);
 };
 
 class BasicBlock {

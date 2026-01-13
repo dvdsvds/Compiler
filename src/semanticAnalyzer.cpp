@@ -2,35 +2,6 @@
 #include <iostream>
 #include <set>
 
-std::string tokenToString(Token t) {
-    switch(t) {
-        case Token::S8: return "s8";
-        case Token::S16: return "s16";
-        case Token::S32: return "s32";
-        case Token::US8: return "us8";
-        case Token::US16: return "us16";
-        case Token::US32: return "us32";
-        case Token::BOOL: return "bool";
-        case Token::VOID: return "void";
-        case Token::NULL_T: return "null";
-        case Token::S8_ARRAY: return "s8[]";
-        case Token::S16_ARRAY: return "s16[]";
-        case Token::S32_ARRAY: return "s32[]";
-        case Token::US8_ARRAY: return "us8[]";
-        case Token::US16_ARRAY: return "us16[]";
-        case Token::US32_ARRAY: return "us32[]";
-        case Token::BOOL_ARRAY: return "bool[]";
-        case Token::PS8: return "ps8";
-        case Token::PS16: return "ps16";
-        case Token::PS32: return "ps32";
-        case Token::PUS8: return "pus8";
-        case Token::PUS16: return "pus16";
-        case Token::PUS32: return "pus32";
-        case Token::INVALID: return "invalid";
-        default: return "unknown";
-    }
-}
-
 SemanticAnalyzer::SemanticAnalyzer(SymbolTable* track_symbol) 
     : track_symbol(track_symbol), loop_depth(0), return_type{Token::INVALID, "", 0, 0} {};
 
@@ -183,7 +154,18 @@ void SemanticAnalyzer::visit(BinaryExpr* node) {
                 return;
             }
             break;
-        
+
+        case Token::ASSIGN:
+        case Token::PLUS_EQ:
+        case Token::MINUS_EQ:
+        case Token::STAR_EQ:
+        case Token::SLASH_EQ:
+        case Token::PERCENT_EQ:
+        case Token::AND_EQ:
+        case Token::OR_EQ:
+        case Token::XOR_EQ:
+        case Token::SHL_EQ:
+        case Token::SHR_EQ:
         case Token::EQ:
         case Token::NE:
             if(leftType == rightType) {
@@ -409,6 +391,11 @@ void SemanticAnalyzer::visit(VarDeclStmt* node) {
 
     TokenData varType = {node->getType(), "", node->get_line(), node->get_column()};
     track_symbol->insert(node->getName(), {node->getName(), varType, track_symbol->curr_scope(), false, false});
+
+    Symbol* sym = track_symbol->lookup(node->getName());
+    if(sym != nullptr) {
+        node->setAddressTaken(sym->is_address_taken());
+    }
 };
 
 void SemanticAnalyzer::visit(AssignStmt* node) { 
@@ -448,44 +435,17 @@ void SemanticAnalyzer::visit(IfStmt* node) {
     }
 };
 
-void SemanticAnalyzer::visit(WhileStmt* node) { 
-    loop_depth++;
-    node->getCondition()->accept(this);
-    if(node->getCondition()->getType() == Token::INVALID) {
-        loop_depth--;
-        return;
-    }
-    
-    if(node->getCondition()->getType() != Token::BOOL) {
-        add_error({"While condition must be bool type, got " + tokenToString(node->getCondition()->getType()), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
-        loop_depth--;
-        return;
-    }
-
-    node->getBody()->accept(this);
-    loop_depth--;
-};
-
-void SemanticAnalyzer::visit(ForStmt* node) { 
+void SemanticAnalyzer::visit(LoopStmt* node) { 
     track_symbol->enter_scope();
+
     if(node->getInitializer() != nullptr) {
         node->getInitializer()->accept(this);
     }
-
-    loop_depth++;
-    if(node->getCondition() != nullptr) {
-        node->getCondition()->accept(this);
-        if(node->getCondition()->getType() == Token::INVALID) {
-            loop_depth--;
-            track_symbol->exit_scope();
-            return;
-        }
-        if(node->getCondition()->getType() != Token::BOOL) {
-            add_error({"For condition must be bool type, got " + tokenToString(node->getCondition()->getType()), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
-            loop_depth--;
-            track_symbol->exit_scope();
-            return;
-        }
+    
+    node->getCondition()->accept(this);
+    if(node->getCondition()->getType() != Token::BOOL) {
+        add_error({"Loop condition must be boolean type, got " + tokenToString(node->getCondition()->getType()), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+        return;
     }
 
     if(node->getIncrement() != nullptr) {
@@ -493,7 +453,7 @@ void SemanticAnalyzer::visit(ForStmt* node) {
     }
 
     node->getBody()->accept(this);
-    loop_depth--;
+
     track_symbol->exit_scope();
 };
 

@@ -1,5 +1,4 @@
 #include <stdexcept>
-#include <iostream>
 #include "parser.hpp"
 
 Parser::Parser(const std::vector<TokenData>& tokens) : tokens(tokens), curr_pos(0) {}
@@ -52,10 +51,7 @@ bool Parser::isAtEnd() {
 
 void Parser::expect(Token type) {
     if(!check(type)) {
-        std::string error = "Expected token type " + std::to_string(static_cast<int>(type)) + 
-                           " but got " + std::to_string(static_cast<int>(peek())) + 
-                           " at position " + std::to_string(curr_pos);
-        throw std::runtime_error(error);
+        throw std::runtime_error("Expected token type " + std::to_string(static_cast<int>(type)) + " but got " + std::to_string(static_cast<int>(peek())) + " at position " + std::to_string(curr_pos));
     }
     advance();
 }
@@ -338,7 +334,20 @@ Expr* Parser::parsePrimary() {
         Expr* expr = parseExpression();
         expect(Token::RPAREN);
         return expr;
-    } else {
+    } else if(match(Token::IN)) {
+        expect(Token::LPAREN);
+        std::string varName = tokens[curr_pos].value;
+        expect(Token::IDENTIFIER);
+        expect(Token::RPAREN);
+        return new InExpr(varName, line, column);
+    } else if(match(Token::OUT)) {
+        expect(Token::LPAREN);
+        std::string varName = tokens[curr_pos].value;
+        expect(Token::IDENTIFIER);
+        expect(Token::RPAREN);
+        return new OutExpr(varName, line, column);
+    }
+    else {
         throw std::runtime_error("Unexpected token in expression");
     }
 }
@@ -551,9 +560,7 @@ FunctionDecl* Parser::parseFunction() {
         throw std::runtime_error("Expected function but got EOF");
     }
     std::string name = tokens[curr_pos].value;
-    std::cout << "Function name: " << name << std::endl;
     expect(Token::IDENTIFIER);
-    std::cout << "After IDENTIFIER" << std::endl;
     std::vector<Parameter> parameters;
     expect(Token::LPAREN);
     if(!check(Token::RPAREN)) {

@@ -14,6 +14,9 @@ class IRBuilder {
         int next_label;
         std::map<std::string, Operand*> local_vars;
         std::map<std::string, bool> var_address_taken;
+        std::vector<std::map<std::string, Operand*>> local_vars_stack;
+        std::map<std::string, Operand*> out_values;
+        bool in_loop_body;
 
         std::set<std::string> findModifiedVars(Stmt* stmt);
         Operand* evaluateExpr(Expr* expr);
@@ -23,6 +26,8 @@ class IRBuilder {
         IRBuilder(IRModule* module, SymbolTable* track_symbol);
         Operand* newVirtualReg(Token data_type);
         std::string newLabel();
+        void enterScope();
+        void exitScope();
 
         Operand* visitLiteralExpr(LiteralExpr* node);
         Operand* visitVariableExpr(VariableExpr* node);
@@ -30,6 +35,8 @@ class IRBuilder {
         Operand* visitUnaryExpr(UnaryExpr* node);
         Operand* visitCallExpr(CallExpr* node);
         Operand* visitArrayAccessExpr(ArrayAccessExpr* node);
+        Operand* visitInExpr(InExpr* node);
+        Operand* visitOutExpr(OutExpr* node);
 
         void visitVarDeclStmt(VarDeclStmt* node);
         void visitAssignStmt(AssignStmt* node);

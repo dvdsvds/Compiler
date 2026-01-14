@@ -1,8 +1,7 @@
 #include "IRBuilder.hpp"
-#include <iostream>
 
 IRBuilder::IRBuilder(IRModule* module, SymbolTable* track_symbol) 
-    : module(module), curr_function(nullptr), curr_block(nullptr), next_vreg(0), next_label(0), local_vars({}), track_symbol(track_symbol) {}
+    : module(module), curr_function(nullptr), curr_block(nullptr), next_vreg(0), next_label(0), local_vars({}), track_symbol(track_symbol), in_loop_body(false) {}
 
 Operand* IRBuilder::newVirtualReg(Token data_type) {
     return Operand::createVirtualReg(next_vreg++, data_type);
@@ -11,6 +10,15 @@ std::string IRBuilder::newLabel() {
     std::string label = "L" + std::to_string(next_label);
     next_label++;
     return label;    
+}
+void IRBuilder::enterScope() {
+    local_vars_stack.push_back(local_vars);
+}
+void IRBuilder::exitScope() {
+    if(!local_vars_stack.empty()) {
+        local_vars = local_vars_stack.back();
+        local_vars_stack.pop_back();
+    }
 }
 
 Operand* IRBuilder::visitLiteralExpr(LiteralExpr* node) {
@@ -153,6 +161,23 @@ Operand* IRBuilder::visitArrayAccessExpr(ArrayAccessExpr* node) {
 
     return dest;
 }
+Operand* IRBuilder::visitOutExpr(OutExpr* node) {
+    Operand* value = local_vars[node->getVariableName()];
+    out_values[node->getVariableName()] = value;
+    IRInstruction* out_instr = IRInstruction::createOut(value);
+    curr_block->addInstruction(out_instr);
+    return nullptr;
+}
+Operand* IRBuilder::visitInExpr(InExpr* node) {
+    if(out_values.find(node->getVariableName()) == out_values.end()) {
+        return nullptr;
+    }
+    Operand* value = out_values[node->getVariableName()];
+    local_vars[node->getVariableName()] = value;
+    IRInstruction* in_instr = IRInstruction::createIn(value);
+    curr_block->addInstruction(in_instr);
+    return value;
+}
 
 void IRBuilder::visitVarDeclStmt(VarDeclStmt* node) {
     std::string fname = node->getName();
@@ -162,7 +187,7 @@ void IRBuilder::visitVarDeclStmt(VarDeclStmt* node) {
     if(node->getInitializer() != nullptr) {
         init_value = evaluateExpr(node->getInitializer());
     } else {
-        init_value = nullptr;
+        init_value = Operand::createConstant(0, func_type);
     }
 
     bool is_addr_taken = node->isAddressTaken();
@@ -199,7 +224,6 @@ void IRBuilder::visitAssignStmt(AssignStmt* node) {
     Operand* value = evaluateExpr(node->getValue());
 
     if(VariableExpr* var = dynamic_cast<VariableExpr*>(node->getTarget())) {
-        // Symbol* symbol = track_symbol->lookup(var->getName());
         bool is_addr_taken = var_address_taken[var->getName()];
 
         if(is_addr_taken) {
@@ -249,6 +273,9 @@ void IRBuilder::visitIfStmt(IfStmt* node) {
 }
 
 void IRBuilder::visitLoopStmt(LoopStmt* node) {
+    bool prev_in_loop_body = in_loop_body;
+    in_loop_body = false;
+
     std::string entry_label_str = newLabel();
     std::string loop_label_str = newLabel();
     std::string body_label_str = newLabel();
@@ -273,8 +300,12 @@ void IRBuilder::visitLoopStmt(LoopStmt* node) {
     }
     
     std::map<std::string, Operand*> entry_values;
+    std::set<std::string> valid_vars;
     for(const auto& var_name : modified_vars) {
-        entry_values[var_name] = local_vars[var_name];
+        if(local_vars.find(var_name) != local_vars.end() && local_vars[var_name] != nullptr) {
+            entry_values[var_name] = local_vars[var_name];
+            valid_vars.insert(var_name);
+        }
     }
     
     BasicBlock* loop_block = new BasicBlock(loop_label_str);
@@ -282,7 +313,7 @@ void IRBuilder::visitLoopStmt(LoopStmt* node) {
     curr_block = loop_block;
     
     std::map<std::string, IRInstruction*> phi_instructions;
-    for(const auto& var_name : modified_vars) {
+    for(const auto& var_name : valid_vars) {
         Operand* phi_dest = newVirtualReg(Token::S32);
         IRInstruction* phi_instr = IRInstruction::createPhi(phi_dest, {});
         phi_instr->addPhiOperand(entry_values[var_name], entry_label_str);
@@ -306,16 +337,18 @@ void IRBuilder::visitLoopStmt(LoopStmt* node) {
     curr_function->addBasicBlock(body_block);
     curr_block = body_block;
     
+    in_loop_body = true;
     evaluateStmt(node->getBody());
+    in_loop_body = prev_in_loop_body;
     
     if(node->getIncrement() != nullptr) {
         evaluateExpr(node->getIncrement());
     }
     
-    for(const auto& var_name : modified_vars) {
+    for(const auto& var_name : valid_vars) {
         phi_instructions[var_name]->addPhiOperand(local_vars[var_name], body_label_str);
     }
-    
+
     IRInstruction* jump_instr = IRInstruction::createJump(loop_label);
     curr_block->addInstruction(jump_instr);
     
@@ -323,7 +356,7 @@ void IRBuilder::visitLoopStmt(LoopStmt* node) {
     curr_function->addBasicBlock(end_block);
     curr_block = end_block;
 
-    for(const auto& var_name : modified_vars) {
+    for(const auto& var_name : valid_vars) {
         local_vars[var_name] = phi_instructions[var_name]->getDest();
     }
 }
@@ -340,15 +373,20 @@ void IRBuilder::visitSendStmt(SendStmt* node) {
     curr_block->addInstruction(IRInstruction::createSend(local_vars[node->getVariableName()], node->getTargetName()));
 }
 void IRBuilder::visitRecvStmt(RecvStmt* node) {
-    Token type = track_symbol->lookup(node->getVariableName())->get_type().type;
-
-    Operand* token = newVirtualReg(type);
-    curr_block->addInstruction(IRInstruction::createRecv(token));
-    local_vars[node->getVariableName()] = token;
+    Operand* dest = newVirtualReg(node->getVarType());
+    IRInstruction* recv_instr = IRInstruction::createRecv(dest);
+    curr_block->addInstruction(recv_instr);
+    local_vars[node->getVariableName()] = dest;
 }
 void IRBuilder::visitBlockStmt(BlockStmt* node) {
+    if(!in_loop_body) {
+        enterScope();
+    }
     for(const auto& statement : node->getStatements()) {
         evaluateStmt(statement);
+    }
+    if(!in_loop_body) {
+        exitScope();
     }
 }
 void IRBuilder::visitExprStmt(ExprStmt* node) {
@@ -395,6 +433,10 @@ Operand* IRBuilder::evaluateExpr(Expr* expr) {
         return visitCallExpr(call);
     } else if(ArrayAccessExpr* array = dynamic_cast<ArrayAccessExpr*>(expr)) {
         return visitArrayAccessExpr(array);
+    } else if(InExpr* in = dynamic_cast<InExpr*>(expr)) {
+        return visitInExpr(in);
+    } else if(OutExpr* out = dynamic_cast<OutExpr*>(expr)) {
+        return visitOutExpr(out);
     } else {
         return nullptr;
     }
@@ -426,7 +468,7 @@ std::set<std::string> IRBuilder::findModifiedVars(Stmt* stmt) {
     std::set<std::string> modified;
     
     if(VarDeclStmt* varDecl = dynamic_cast<VarDeclStmt*>(stmt)) {
-        modified.insert(varDecl->getName());
+        return modified;
     } else if(BlockStmt* block = dynamic_cast<BlockStmt*>(stmt)) {
         for(const auto& s : block->getStatements()) {
             auto vars = findModifiedVars(s);

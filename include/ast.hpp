@@ -96,6 +96,24 @@ class ArrayAccessExpr : public Expr {
         void accept(Visitor* v) override;
 };
 
+class InExpr : public Expr {
+    private:
+        std::string variableName;
+    public:
+        InExpr(const std::string& variableName, int32_t line, int32_t column);
+        std::string getVariableName() const;
+        void accept(Visitor* v) override;
+};
+
+class OutExpr : public Expr {
+    private:
+        std::string variableName;
+    public:
+        OutExpr(const std::string& variableName, int32_t line, int32_t column);
+        std::string getVariableName() const;
+        void accept(Visitor* v) override;
+};
+
 class VarDeclStmt : public Stmt {
     private:
         Token type;
@@ -176,10 +194,13 @@ class RecvStmt : public Stmt {
     private:
         std::string variableName;
         std::string srcFunction;
+        Token varType;
     public:
         RecvStmt(const std::string& variableName, const std::string& srcFunction, int32_t line, int32_t column);
         std::string getVariableName() const;
         std::string getSrcFunction() const;
+        Token getVarType() const;
+        void setVarType(Token type);
         void accept(Visitor* v) override;
 };
 

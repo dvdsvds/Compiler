@@ -2,7 +2,7 @@
 #include <string>
 
 enum class Token {
-    RECORD, ENUM, IF, ELSE, LOOP, IN, RETURN, BREAK, CONTINUE, SWITCH, CASE, DEFAULT, ASM, SEND, RECV, NULL_KW,
+    RECORD, ENUM, IF, ELSE, LOOP, IN, OUT, RETURN, BREAK, CONTINUE, SWITCH, CASE, DEFAULT, ASM, SEND, RECV, NULL_KW,
     S8, S16, S32, US8, US16, US32, BOOL, TRUE, FALSE, VOID, NULL_T,
     S8_ARRAY, S16_ARRAY, S32_ARRAY, US8_ARRAY, US16_ARRAY, US32_ARRAY, BOOL_ARRAY, 
     PS8, PS16, PS32, PUS8, PUS16, PUS32,
@@ -33,6 +33,7 @@ inline std::string tokenToString(Token t) {
         case Token::ELSE: return "ELSE";
         case Token::LOOP: return "LOOP";
         case Token::IN: return "IN";
+        case Token::OUT: return "OUT";
         case Token::RETURN: return "RETURN";
         case Token::BREAK: return "BREAK";
         case Token::CONTINUE: return "CONTINUE";

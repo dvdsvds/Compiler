@@ -45,6 +45,16 @@ Expr* ArrayAccessExpr::getArrayName() const { return arrayName; }
 Expr* ArrayAccessExpr::getIndex() const { return index; }
 void ArrayAccessExpr::accept(Visitor* v) { v->visit(this); }
 
+InExpr::InExpr(const std::string& variableName, int32_t line, int32_t column)
+    : Expr(line, column), variableName(variableName) {}
+std::string InExpr::getVariableName() const { return variableName; }
+void InExpr::accept(Visitor* v) { v->visit(this); }
+
+OutExpr::OutExpr(const std::string& variableName, int32_t line, int32_t column)
+    : Expr(line, column), variableName(variableName) {}
+std::string OutExpr::getVariableName() const { return variableName; }
+void OutExpr::accept(Visitor* v) { v->visit(this); }
+
 VarDeclStmt::VarDeclStmt(Token type, const std::string& name, Expr* initializer, int32_t line, int32_t column) 
     : Stmt(line, column), type(type), name(name), initializer(initializer), address_taken(false) {}
 Token VarDeclStmt::getType() const { return type; }
@@ -87,9 +97,11 @@ std::string SendStmt::getTargetName() const { return targetName; }
 void SendStmt::accept(Visitor* v) { v->visit(this); }
 
 RecvStmt::RecvStmt(const std::string& variableName, const std::string& srcFunction, int32_t line, int32_t column) 
-    : Stmt(line, column), variableName(variableName), srcFunction(srcFunction) {}
+    : Stmt(line, column), variableName(variableName), srcFunction(srcFunction), varType(Token::INVALID) {}
 std::string RecvStmt::getVariableName() const { return variableName; }
 std::string RecvStmt::getSrcFunction() const { return srcFunction; }
+Token RecvStmt::getVarType() const { return varType; }
+void RecvStmt::setVarType(Token type) { varType = type; }
 void RecvStmt::accept(Visitor* v) { v->visit(this); }
 
 BlockStmt::BlockStmt(const std::vector<Stmt*>& statements, int32_t line, int32_t column) 

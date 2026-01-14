@@ -72,6 +72,8 @@ class SemanticAnalyzer : public Visitor {
         void visit(UnaryExpr* node) override;
         void visit(CallExpr* node) override;
         void visit(ArrayAccessExpr* node) override;
+        void visit(InExpr* node) override;
+        void visit(OutExpr* node) override;
         void visit(VarDeclStmt* node) override;
         void visit(AssignStmt* node) override;
         void visit(IfStmt* node) override;

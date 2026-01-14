@@ -169,7 +169,7 @@ void SemanticAnalyzer::visit(BinaryExpr* node) {
         case Token::EQ:
         case Token::NE:
             if(leftType == rightType) {
-                node->setType(Token::BOOL);
+                node->setType(leftType);
             } else {
                 add_error({"Type mismatch in equality: operand types must match, got " + tokenToString(leftType) + " and " + tokenToString(rightType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                 node->setType(Token::INVALID);
@@ -371,6 +371,37 @@ void SemanticAnalyzer::visit(ArrayAccessExpr* node) {
     }
 };
 
+void SemanticAnalyzer::visit(InExpr* node) {
+    Symbol* sym = track_symbol->lookup(node->getVariableName());
+    if(sym == nullptr) {
+        add_error({"Variable '" + node->getVariableName() + "' is not declared", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
+        node->setType(Token::INVALID);
+        return;
+    }
+    
+    if(out_consumed.find(node->getVariableName()) == out_consumed.end()) {
+        add_error({"in() can only be used with out variables", errorType::IN_NON_OUT_VARIABLE, node->get_line(), node->get_column()});
+        node->setType(Token::INVALID);
+        return;
+    }
+    
+    out_consumed[node->getVariableName()] = true;
+    node->setType(sym->get_type().type);
+}
+
+void SemanticAnalyzer::visit(OutExpr* node) {
+    Symbol* sym = track_symbol->lookup(node->getVariableName());
+    if(sym == nullptr) {
+        add_error({"Variable '" + node->getVariableName() + "' is not declared", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
+        node->setType(Token::INVALID);
+        return;
+    }
+
+    out_consumed[node->getVariableName()] = false;
+    
+    node->setType(Token::VOID);
+}
+
 void SemanticAnalyzer::visit(VarDeclStmt* node) { 
     if(track_symbol->lookup_current_scope(node->getName()) != nullptr) {
         add_error({"Variable '" + node->getName() + "' is already declared in this scope", errorType::VARIABLE_REDECLARED, node->get_line(), node->get_column()});
@@ -482,11 +513,6 @@ void SemanticAnalyzer::visit(SendStmt* node) {
         return;
     }
 
-    if(!varSymbol->is_out_variable()) {
-        add_error({"Cannot send non-out variable '" + node->getVariableName() + "'", errorType::IN_NON_OUT_VARIABLE, node->get_line(), node->get_column()});
-        return;
-    } 
-
     all_sends.push_back({
         node->getVariableName(),
         node->getTargetName(),
@@ -502,6 +528,8 @@ void SemanticAnalyzer::visit(RecvStmt* node) {
         add_error({"Variable '" + node->getVariableName() + "' is not declared", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
         return;
     }
+
+    node->setVarType(var_name->get_type().type);
 
     Symbol* srcFunc = track_symbol->lookup(node->getSrcFunction());
     if(srcFunc == nullptr || !srcFunc->is_func()) {
@@ -581,27 +609,9 @@ void SemanticAnalyzer::visit(Program* node) {
             continue;
         }
 
-        bool found = false;
-        for(const auto& recv_info : function_recvs[send_info.target_function]) {
-            if(recv_info.var_name == send_info.var_name) {
-                found = true;
-                if(recv_info.type != track_symbol->lookup(send_info.var_name)->get_type().type) {
-                    add_error({"Send/Recv type mismatch for variable '" + send_info.var_name + "': send type is " + tokenToString(track_symbol->lookup(send_info.var_name)->get_type().type) + ", recv type is " + tokenToString(recv_info.type), errorType::SEND_RECV_TYPE_INCONSISTENCY, send_info.line, send_info.column});
-                    break;
-                }
-
-                Symbol* sendVar = track_symbol->lookup(send_info.var_name);
-                if(sendVar->is_consumed()) {
-                    add_error({"Out variable '" + send_info.var_name + "' is already consumed", errorType::OUT_ALREADY_CONSUMED, send_info.line, send_info.column});
-                    break;
-                }
-                sendVar->mark_as_consumed();
-                break;
-            } 
-        }
-        if(!found) {
-            add_error({"No matching recv for variable '" + send_info.var_name + "' in function '" + send_info.target_function + "'", errorType::NO_RECV_TARGET, send_info.line, send_info.column});
-            continue;
+        if(function_recvs.find(send_info.target_function) == function_recvs.end() || 
+        function_recvs[send_info.target_function].empty()) {
+            add_error({"No recv in target function '" + send_info.target_function + "'", errorType::NO_RECV_TARGET, send_info.line, send_info.column});
         }
     }
 }

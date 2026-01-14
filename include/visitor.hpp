@@ -5,6 +5,8 @@ class VariableExpr;
 class BinaryExpr;
 class UnaryExpr;
 class CallExpr;
+class InExpr;
+class OutExpr;
 class ArrayAccessExpr;
 class VarDeclStmt;
 class AssignStmt;
@@ -27,6 +29,8 @@ class Visitor {
         virtual void visit(UnaryExpr* node) = 0;
         virtual void visit(CallExpr* node) = 0;
         virtual void visit(ArrayAccessExpr* node) = 0;
+        virtual void visit(InExpr* node) = 0;
+        virtual void visit(OutExpr* node) = 0;
         virtual void visit(VarDeclStmt* node) = 0;
         virtual void visit(AssignStmt* node) = 0;
         virtual void visit(IfStmt* node) = 0;

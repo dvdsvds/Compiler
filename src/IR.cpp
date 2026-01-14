@@ -1,4 +1,5 @@
 #include "IR.hpp"
+#include <iostream>
 
 Operand::Operand(OperandType type, int vreg_num, int const_value, int stack_offset, std::string* label_name, std::string* global_name, Token data_type) 
     : type(type), vreg_num(vreg_num), const_value(const_value), stack_offset(stack_offset), label_name(label_name), global_name(global_name), data_type(data_type) {}
@@ -190,7 +191,6 @@ static std::string opcodeToString(IROpcode op) {
         default: return "UNKNOWN";
     }
 }
-
 std::string IRInstruction::toString() const {
     std::string result = "";
     
@@ -262,14 +262,24 @@ std::string IRInstruction::toString() const {
         case IROpcode::PHI:
             result = dest->toString() + " = PHI(";
             for (size_t i = 0; i < phi_operands.size(); i++) {
-                result += phi_operands[i].first->toString() + ", " + phi_operands[i].second;
+                if(phi_operands[i].first) {
+                    result += phi_operands[i].first->toString();
+                } else {
+                    result += "[NULL]";
+                }
+                result += ", " + phi_operands[i].second;
                 if (i < phi_operands.size() - 1) result += "), (";
             }
             result += ")";
             break;
             
         case IROpcode::SEND:
-            result = "SEND " + src1->toString() + " TO " + *func_name;
+            result = "SEND ";
+            if(src1) result += src1->toString();
+            else result += "[NULL]";
+            result += " TO ";
+            if(func_name) result += *func_name;
+            else result += "[NULL]";
             break;
         case IROpcode::RECV:
             result = dest->toString() + " = RECV";
@@ -301,7 +311,11 @@ std::vector<BasicBlock*> BasicBlock::getPredecessors() const { return predecesso
 std::string BasicBlock::toString() const {
     std::string result = label + ":\n";
     for (IRInstruction* instr : instructions) {
-        result += "    " + instr->toString() + "\n";
+        if(instr == nullptr) {
+            result += "    [NULL INSTRUCTION]\n";
+        } else {
+            result += "    " + instr->toString() + "\n";
+        }
     }
     return result;
 }

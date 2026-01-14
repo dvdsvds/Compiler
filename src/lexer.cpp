@@ -7,6 +7,7 @@ Lexer::Lexer(const std::string& src) : source(src), pos(0), line(1), column(0) {
     keywords["else"] = Token::ELSE;
     keywords["loop"] = Token::LOOP;
     keywords["in"] = Token::IN;
+    keywords["out"] = Token::OUT;
     keywords["return"] = Token::RETURN;
     keywords["break"] = Token::BREAK;
     keywords["continue"] = Token::CONTINUE;

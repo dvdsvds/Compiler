@@ -7,9 +7,7 @@ Operand* IRBuilder::newVirtualReg(Token data_type) {
     return Operand::createVirtualReg(next_vreg++, data_type);
 }
 std::string IRBuilder::newLabel() {
-    std::string label = "L" + std::to_string(next_label);
-    next_label++;
-    return label;    
+    return "L" + std::to_string(next_label++);
 }
 void IRBuilder::enterScope() {
     local_vars_stack.push_back(local_vars);

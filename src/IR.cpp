@@ -25,7 +25,6 @@ bool Operand::isConstant() const { return type == OperandType::CONSTANT; }
 bool Operand::isLabel() const { return type == OperandType::LABEL; }
 bool Operand::isGlobal() const { return type == OperandType::GLOBAL; }
 bool Operand::isStackSlot() const { return type == OperandType::STACK_SLOT; }
-
 OperandType Operand::getType() const { return type; }
 int Operand::getVregNum() const { return vreg_num; }
 int Operand::constValue() const { return const_value; }
@@ -57,7 +56,6 @@ std::string Operand::toString() const {
 
 IRInstruction::IRInstruction(IROpcode opcode, Operand* dest, Operand* src1, Operand* src2, std::string* func_name, std::vector<Operand*> args, std::vector<std::pair<Operand*, std::string>> phi_operands)
     : opcode(opcode), dest(dest), src1(src1), src2(src2), func_name(func_name), args(args), phi_operands(phi_operands) {}
-
 IRInstruction* IRInstruction::createAdd(Operand* dest, Operand* src1, Operand* src2) {
     return new IRInstruction(IROpcode::ADD, dest, src1, src2, nullptr, {}, {});
 }
@@ -165,7 +163,6 @@ Operand* IRInstruction::getSrc2() const { return src2; }
 std::string* IRInstruction::getFuncName() const { return func_name; }
 std::vector<Operand*> IRInstruction::getArgs() const { return args; }
 std::vector<std::pair<Operand*, std::string>> IRInstruction::getPhi() const { return phi_operands; }
-
 static std::string opcodeToString(IROpcode op) {
     switch(op) {
         case IROpcode::ADD: return "ADD";
@@ -216,7 +213,6 @@ std::string IRInstruction::toString() const {
             result += opcodeToString(opcode) + " ";
             result += src1->toString() + ", " + src2->toString();
             break;
-            
         case IROpcode::NEG:
         case IROpcode::NOT:
         case IROpcode::COPY:
@@ -224,7 +220,6 @@ std::string IRInstruction::toString() const {
             result += opcodeToString(opcode) + " ";
             result += src1->toString();
             break;
-            
         case IROpcode::LOAD:
             result = dest->toString() + " = LOAD " + src1->toString();
             break;
@@ -234,7 +229,6 @@ std::string IRInstruction::toString() const {
         case IROpcode::ALLOCA:
             result = dest->toString() + " = ALLOCA " + src1->toString();
             break;
-            
         case IROpcode::LABEL:
             result = dest->toString() + ":";
             break;
@@ -244,7 +238,6 @@ std::string IRInstruction::toString() const {
         case IROpcode::BRANCH:
             result = "BRANCH " + src1->toString() + ", " + src2->toString();
             break;
-            
         case IROpcode::CALL:
             if (dest) result = dest->toString() + " = ";
             result += "CALL " + *func_name + "(";
@@ -258,7 +251,6 @@ std::string IRInstruction::toString() const {
             result = "RETURN";
             if (src1) result += " " + src1->toString();
             break;
-            
         case IROpcode::PHI:
             result = dest->toString() + " = PHI(";
             for (size_t i = 0; i < phi_operands.size(); i++) {
@@ -272,7 +264,6 @@ std::string IRInstruction::toString() const {
             }
             result += ")";
             break;
-            
         case IROpcode::SEND:
             result = "SEND ";
             if(src1) result += src1->toString();
@@ -290,20 +281,16 @@ std::string IRInstruction::toString() const {
         case IROpcode::IN:
             result = dest->toString() + " = IN";
             break;
-            
         default:
             result = "UNKNOWN";
     }
-    
     return result;
 }
 
 BasicBlock::BasicBlock(const std::string& label) : label(label), instructions({}), successors({}), predecessors({}) {}
-
 void BasicBlock::addInstruction(IRInstruction* insert) { instructions.push_back(insert); }
 void BasicBlock::addSuccessor(BasicBlock* block) { successors.push_back(block); }
 void BasicBlock::addPredecessor(BasicBlock* block) { predecessors.push_back(block); }
-
 std::string BasicBlock::getLabel() const { return label; }
 std::vector<IRInstruction*> BasicBlock::getInstructions() const { return instructions; }
 std::vector<BasicBlock*> BasicBlock::getSuccessors() const { return successors; }
@@ -322,10 +309,8 @@ std::string BasicBlock::toString() const {
 
 IRFunction::IRFunction(const std::string& name, const std::vector<Operand*> parameters, Token return_type) 
     : name(name), parameters(parameters), return_type(return_type), basic_blocks({}), entry_block(nullptr) {}
-
 void IRFunction::addBasicBlock(BasicBlock* block) { basic_blocks.push_back(block); }
 void IRFunction::setEntryBlock(BasicBlock* entry) { entry_block = entry; }
-
 std::string IRFunction::getName() const { return name; }
 std::vector<Operand*> IRFunction::getParameters() const { return parameters; }
 Token IRFunction::getReturnType() const { return return_type; }
@@ -333,26 +318,20 @@ std::vector<BasicBlock*> IRFunction::getBasicBlocks() const { return basic_block
 BasicBlock* IRFunction::getEntryBlock() const { return entry_block; }
 std::string IRFunction::toString() const {
     std::string result = "FUNCTION " + name + "(";
-    
     for (size_t i = 0; i < parameters.size(); i++) {
         result += parameters[i]->toString();
         if (i < parameters.size() - 1) result += ", ";
     }
-    
     result += ") -> " + tokenToString(return_type) + "\n";
-    
     for (BasicBlock* bb : basic_blocks) {
         result += bb->toString();
     }
-    
     return result;
 }
 
 IRModule::IRModule() : functions({}), global_variables({}) {}
-
 void IRModule::addFunction(IRFunction* function) { functions.push_back(function); }
 void IRModule::addGlobalVariable(const std::string& name, Operand* variable) { global_variables.insert({name, variable}); }
-
 IRFunction* IRModule::getFunction(const std::string& name) const {
     for(auto& it : functions) {
         if(it->getName() == name) { return it; }
@@ -367,10 +346,8 @@ Operand* IRModule::getGlobalVariable(const std::string& name) const {
 
 std::vector<IRFunction*> IRModule::getFunctions() const { return functions; }
 std::map<std::string, Operand*> IRModule::getGlobalVariables() const { return global_variables; }
-
 std::string IRModule::toString() const {
     std::string result = "";
-    
     if (!global_variables.empty()) {
         result += "GLOBALS:\n";
         for (const auto& [name, operand] : global_variables) {
@@ -378,11 +355,9 @@ std::string IRModule::toString() const {
         }
         result += "\n";
     }
-    
     for (IRFunction* func : functions) {
         result += func->toString() + "\n";
     }
-    
     return result;
 }
 

@@ -1,0 +1,31 @@
+#pragma once
+#include "IR.hpp"
+#include <ostream>
+
+class AssemblyEmitter {
+    private:
+        std::ostream& output;
+        IRModule* module;
+        std::map<int, int> reg_assignment_info;
+        std::map<int, int> spill_info;
+        int offset;
+        int label_counter;
+
+        std::map<std::string, int> send_recv_addresses;
+        int next_send_recv_addr;
+        std::string current_function;
+
+        void emitFunction(IRFunction* func);
+        void emitBasicBlock(BasicBlock* block);
+        void emitInstruction(IRInstruction* instr);
+        void allocateReg(IRFunction* func);
+        int PhysicalReg(Operand* operand);
+        bool needsSpill(int vreg_num);
+        int getSpillOffset(int vreg_num);
+        void eliminatePHI(IRFunction* func);
+        void emitPrologue(IRFunction* func);
+        void emitEpilogue(IRFunction* func);
+    public:
+        AssemblyEmitter(std::ostream& output);
+        void emit(IRModule* module);
+};

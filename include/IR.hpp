@@ -134,6 +134,9 @@ class BasicBlock {
         std::vector<IRInstruction*> getInstructions() const;
         std::vector<BasicBlock*> getSuccessors() const;
         std::vector<BasicBlock*> getPredecessors() const;
+        void insertInstructionBefore(int index, IRInstruction* instr);
+        void removeInstruction(IRInstruction* instr);
+        std::vector<IRInstruction*>& getInstructionsMutable();
 
         std::string toString() const;
 };

@@ -307,24 +307,95 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             output << "loadw r" << rd << ", " << offset << "(r_temp)" << std::endl;
             break;
         }
-        default:
+        case IROpcode::NEG: {
+            int rd = PhysicalReg(instr->getDest());
+            int rs1 = PhysicalReg(instr->getSrc1());
+            output << "neg r" << rd << ", r" << rs1 << std::endl;
             break;
+        }
+        case IROpcode::NOT: {
+            int rd = PhysicalReg(instr->getDest());
+            int rs1 = PhysicalReg(instr->getSrc1());
+            output << "not r" << rd << ", r" << rs1 << std::endl;
+            break;
+        }
+        case IROpcode::SAR: {
+            int rd = PhysicalReg(instr->getDest());
+            int rs1 = PhysicalReg(instr->getSrc1());
+            int rs2 = PhysicalReg(instr->getSrc2());
+            output << "sar r" << rd << ", r" << rs1 << ", r" << rs2 << std::endl;
+            break;
+        }
+        case IROpcode::LABEL: break;
+        case IROpcode::COPY: {
+            int rd = PhysicalReg(instr->getDest());
+            int rs1 = PhysicalReg(instr->getSrc1());
+            output << "mov r" << rd << ", r" << rs1 << std::endl;
+            break;
+        }
+        case IROpcode::PHI: break;
+        default: break;
     }
 }
 void AssemblyEmitter::allocateReg(IRFunction* instr) {
 
 }
 int AssemblyEmitter::PhysicalReg(Operand* operand) {
+    if(operand == nullptr) {
+        throw std::runtime_error("Operand is nullptr");
+    }
 
+    if(!operand->isVirtualReg()) {
+        throw std::runtime_error("Operand is not a virtual register");
+    }
+
+    int vreg_num = operand->getVregNum();
+    if(reg_assignment_info.find(vreg_num) == reg_assignment_info.end()) {
+        throw std::runtime_error("Virtual register not allocated: v" + std::to_string(vreg_num));
+    }
+
+    return reg_assignment_info[vreg_num];
 }
 bool AssemblyEmitter::needsSpill(int vreg_num) {
-
+    if(spill_info.find(vreg_num) != spill_info.end()) {
+        return true;
+    }
+    return false;
 }
 int AssemblyEmitter::getSpillOffset(int vreg_num) {
-
+    if(spill_info.find(vreg_num) == spill_info.end()) {
+        throw std::runtime_error("Virtual register not spilled: v" + std::to_string(vreg_num));
+    }
+    return spill_info[vreg_num];
 }
 void AssemblyEmitter::eliminatePHI(IRFunction* func) {
-
+    for(auto& block : func->getBasicBlocks()) {
+        std::vector<IRInstruction*> phi_to_remove;
+        for(const auto& instr : block->getInstructions()) {
+            if(instr->getOpcode() == IROpcode::PHI) {
+                Operand* dest = instr->getDest();
+                std::vector<std::pair<Operand*, std::string>> phi_operands = instr->getPhi();
+                for(const auto& phi_pair : phi_operands) {
+                    std::vector<BasicBlock*> predecessors = block->getPredecessors();
+                    BasicBlock* pred_block = nullptr;
+                    for(auto pred : predecessors) {
+                        if(pred->getLabel() == phi_pair.second) {
+                            pred_block = pred;
+                            break;
+                        }
+                    }
+                    if(pred_block != nullptr) {
+                        IRInstruction* copy_instr = IRInstruction::createCopy(instr->getDest(), phi_pair.first);
+                        pred_block->insertInstructionBefore(pred_block->getInstructions().size() - 1, copy_instr);
+                    }
+                }
+                phi_to_remove.push_back(instr);
+            }
+        }
+        for(auto phi : phi_to_remove) {
+            block->removeInstruction(phi);
+        }
+    }
 }
 void AssemblyEmitter::emitPrologue(IRFunction* func) {
 

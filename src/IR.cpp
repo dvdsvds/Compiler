@@ -1,5 +1,6 @@
 #include "IR.hpp"
 #include <iostream>
+#include <algorithm>
 
 Operand::Operand(OperandType type, int vreg_num, int const_value, int stack_offset, std::string* label_name, std::string* global_name, Token data_type) 
     : type(type), vreg_num(vreg_num), const_value(const_value), stack_offset(stack_offset), label_name(label_name), global_name(global_name), data_type(data_type) {}
@@ -295,6 +296,9 @@ std::string BasicBlock::getLabel() const { return label; }
 std::vector<IRInstruction*> BasicBlock::getInstructions() const { return instructions; }
 std::vector<BasicBlock*> BasicBlock::getSuccessors() const { return successors; }
 std::vector<BasicBlock*> BasicBlock::getPredecessors() const { return predecessors; }
+void BasicBlock::insertInstructionBefore(int index, IRInstruction* instr) { instructions.insert(instructions.begin() + index, instr); }
+void BasicBlock::removeInstruction(IRInstruction* instr) { instructions.erase(std::remove(instructions.begin(), instructions.end(), instr), instructions.end()); }
+std::vector<IRInstruction*>& BasicBlock::getInstructionsMutable() { return instructions; }
 std::string BasicBlock::toString() const {
     std::string result = label + ":\n";
     for (IRInstruction* instr : instructions) {

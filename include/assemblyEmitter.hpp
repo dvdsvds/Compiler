@@ -25,6 +25,8 @@ class AssemblyEmitter {
         void eliminatePHI(IRFunction* func);
         void emitPrologue(IRFunction* func);
         void emitEpilogue(IRFunction* func);
+
+        std::string getOperandReg(Operand* operand);
     public:
         AssemblyEmitter(std::ostream& output);
         void emit(IRModule* module);

@@ -12,6 +12,7 @@ add_executable(compiler
     src/symbolTable.cpp
     src/IR.cpp
     src/IRBuilder.cpp
+    src/assemblyEmitter.cpp
 )
 
 target_include_directories(compiler PRIVATE

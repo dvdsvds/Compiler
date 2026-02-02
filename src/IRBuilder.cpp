@@ -274,12 +274,11 @@ void IRBuilder::visitLoopStmt(LoopStmt* node) {
     bool prev_in_loop_body = in_loop_body;
     in_loop_body = false;
 
-    std::string entry_label_str = newLabel();
+    std::string entry_label_str = curr_block->getLabel();  // ← 현재 블록이 entry
     std::string loop_label_str = newLabel();
     std::string body_label_str = newLabel();
     std::string end_label_str = newLabel();
     
-    Operand* entry_label = Operand::createLabel(entry_label_str);
     Operand* loop_label = Operand::createLabel(loop_label_str);
     Operand* body_label = Operand::createLabel(body_label_str);
     Operand* end_label = Operand::createLabel(end_label_str);
@@ -306,8 +305,18 @@ void IRBuilder::visitLoopStmt(LoopStmt* node) {
         }
     }
     
+    // entry -> loop으로 점프
+    BasicBlock* entry_block = curr_block;  // ← 현재 블록 저장
+    IRInstruction* entry_jump = IRInstruction::createJump(loop_label);
+    curr_block->addInstruction(entry_jump);
+    
     BasicBlock* loop_block = new BasicBlock(loop_label_str);
     curr_function->addBasicBlock(loop_block);
+    
+    // ← CFG 연결: entry -> loop
+    entry_block->addSuccessor(loop_block);
+    loop_block->addPredecessor(entry_block);
+    
     curr_block = loop_block;
     
     std::map<std::string, IRInstruction*> phi_instructions;
@@ -320,19 +329,33 @@ void IRBuilder::visitLoopStmt(LoopStmt* node) {
         local_vars[var_name] = phi_dest;
     }
     
+    BasicBlock* body_block = new BasicBlock(body_label_str);
+    curr_function->addBasicBlock(body_block);
+    
+    BasicBlock* end_block = new BasicBlock(end_label_str);
+    curr_function->addBasicBlock(end_block);
+    
     if(node->getCondition() != nullptr) {
         Operand* cond = evaluateExpr(node->getCondition());
         IRInstruction* branch_instr = IRInstruction::createBranch(cond, body_label);
         curr_block->addInstruction(branch_instr);
         IRInstruction* end_jump_instr = IRInstruction::createJump(end_label);
         curr_block->addInstruction(end_jump_instr);
+        
+        // ← CFG 연결: loop -> body, loop -> end
+        loop_block->addSuccessor(body_block);
+        body_block->addPredecessor(loop_block);
+        loop_block->addSuccessor(end_block);
+        end_block->addPredecessor(loop_block);
     } else {
         IRInstruction* body_jump_instr = IRInstruction::createJump(body_label);
         curr_block->addInstruction(body_jump_instr);
+        
+        // ← CFG 연결: loop -> body
+        loop_block->addSuccessor(body_block);
+        body_block->addPredecessor(loop_block);
     }
     
-    BasicBlock* body_block = new BasicBlock(body_label_str);
-    curr_function->addBasicBlock(body_block);
     curr_block = body_block;
     
     in_loop_body = true;
@@ -350,8 +373,9 @@ void IRBuilder::visitLoopStmt(LoopStmt* node) {
     IRInstruction* jump_instr = IRInstruction::createJump(loop_label);
     curr_block->addInstruction(jump_instr);
     
-    BasicBlock* end_block = new BasicBlock(end_label_str);
-    curr_function->addBasicBlock(end_block);
+    body_block->addSuccessor(loop_block);
+    loop_block->addPredecessor(body_block);
+    
     curr_block = end_block;
 
     for(const auto& var_name : valid_vars) {

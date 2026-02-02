@@ -14,8 +14,9 @@ void AssemblyEmitter::emit(IRModule* module) {
 void AssemblyEmitter::emitFunction(IRFunction* func) {
     current_function = func->getName();
 
-    allocateReg(func);
     eliminatePHI(func);
+    allocateReg(func);
+
     output << "FUNCTION_" << func->getName() << ":" << std::endl;
     emitPrologue(func);
     for(const auto& blocks : func->getBasicBlocks()) {

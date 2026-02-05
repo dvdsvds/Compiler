@@ -13,7 +13,6 @@ add_executable(compiler
     src/IR.cpp
     src/IRBuilder.cpp
     src/assemblyEmitter.cpp
-    src/assembler.cpp
 )
 
 target_include_directories(compiler PRIVATE

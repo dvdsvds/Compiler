@@ -170,11 +170,11 @@ Operand* IRBuilder::visitInExpr(InExpr* node) {
     if(out_values.find(node->getVariableName()) == out_values.end()) {
         return nullptr;
     }
-    Operand* value = out_values[node->getVariableName()];
-    local_vars[node->getVariableName()] = value;
-    IRInstruction* in_instr = IRInstruction::createIn(value);
+    Operand* dest = Operand::createVirtualReg(next_vreg++, Token::S32);
+    local_vars[node->getVariableName()] = dest;
+    IRInstruction* in_instr = IRInstruction::createIn(dest);
     curr_block->addInstruction(in_instr);
-    return value;
+    return dest;
 }
 
 void IRBuilder::visitVarDeclStmt(VarDeclStmt* node) {

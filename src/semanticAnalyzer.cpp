@@ -169,7 +169,7 @@ void SemanticAnalyzer::visit(BinaryExpr* node) {
         case Token::EQ:
         case Token::NE:
             if(leftType == rightType) {
-                node->setType(leftType);
+                node->setType(Token::BOOL);
             } else {
                 add_error({"Type mismatch in equality: operand types must match, got " + tokenToString(leftType) + " and " + tokenToString(rightType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                 node->setType(Token::INVALID);
@@ -372,21 +372,28 @@ void SemanticAnalyzer::visit(ArrayAccessExpr* node) {
 };
 
 void SemanticAnalyzer::visit(InExpr* node) {
-    Symbol* sym = track_symbol->lookup(node->getVariableName());
-    if(sym == nullptr) {
-        add_error({"Variable '" + node->getVariableName() + "' is not declared", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
-        node->setType(Token::INVALID);
-        return;
-    }
+    // Symbol* sym = track_symbol->lookup(node->getVariableName());
+    // if(sym == nullptr) {
+    //     add_error({"Variable '" + node->getVariableName() + "' is not declared", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
+    //     node->setType(Token::INVALID);
+    //     return;
+    // }
     
+    // if(out_consumed.find(node->getVariableName()) == out_consumed.end()) {
+    //     add_error({"in() can only be used with out variables", errorType::IN_NON_OUT_VARIABLE, node->get_line(), node->get_column()});
+    //     node->setType(Token::INVALID);
+    //     return;
+    // }
+    
+    // out_consumed[node->getVariableName()] = true;
+    // node->setType(sym->get_type().type);
     if(out_consumed.find(node->getVariableName()) == out_consumed.end()) {
         add_error({"in() can only be used with out variables", errorType::IN_NON_OUT_VARIABLE, node->get_line(), node->get_column()});
         node->setType(Token::INVALID);
         return;
     }
-    
-    out_consumed[node->getVariableName()] = true;
-    node->setType(sym->get_type().type);
+
+    node->setType(Token::S32);
 }
 
 void SemanticAnalyzer::visit(OutExpr* node) {

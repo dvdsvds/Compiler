@@ -1,6 +1,7 @@
 #pragma once
 #include "IR.hpp"
 #include <ostream>
+#include <set>
 
 class AssemblyEmitter {
     private:
@@ -14,6 +15,13 @@ class AssemblyEmitter {
         std::map<std::string, int> send_recv_addresses;
         int next_send_recv_addr;
         std::string current_function;
+
+        // Liveness tracking for caller-saved register preservation
+        std::map<int, int> vreg_last_use;
+        int current_instr_idx;
+
+        bool isCallerSaved(int preg);
+        std::set<int> getCallerSavedToPreserve(int call_idx);
 
         void emitFunction(IRFunction* func);
         void emitBasicBlock(BasicBlock* block);

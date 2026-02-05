@@ -3,16 +3,25 @@
 #include <algorithm>
 #include <set>
 
-AssemblyEmitter::AssemblyEmitter(std::ostream& output) : output(output), module(nullptr), label_counter(0), offset(8), next_send_recv_addr(0x00200000) { }
+AssemblyEmitter::AssemblyEmitter(std::ostream& output) : output(output), module(nullptr), label_counter(0), offset(-4), next_send_recv_addr(0x00200000) { }
 
 void AssemblyEmitter::emit(IRModule* module) {
     this->module = module;   
+
+    output << "_start:" << std::endl;
+    output << "mov r_temp, 0xFFFFC" << std::endl;
+    output << "csrw SP, r_temp" << std::endl;
+    output << "call main" << std::endl;
+    output << "hlt" << std::endl;
+    output << std::endl;
+
     for(const auto& func : module->getFunctions()) {
         emitFunction(func);
     }
 }
 void AssemblyEmitter::emitFunction(IRFunction* func) {
     current_function = func->getName();
+    current_instr_idx = 0;
 
     eliminatePHI(func);
     allocateReg(func);
@@ -25,9 +34,10 @@ void AssemblyEmitter::emitFunction(IRFunction* func) {
     emitEpilogue(func);
 }
 void AssemblyEmitter::emitBasicBlock(BasicBlock* block) {
-    output << block->getLabel() << ":" << std::endl; 
+    output << block->getLabel() << ":" << std::endl;
     for(const auto& instr : block->getInstructions()) {
         emitInstruction(instr);
+        current_instr_idx++;
     }
 }
 std::string AssemblyEmitter::getOperandReg(Operand* operand) {
@@ -42,83 +52,203 @@ std::string AssemblyEmitter::getOperandReg(Operand* operand) {
     throw std::runtime_error("Unknown operand type");
 }
 void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
-    // std::cerr << "Processing: " << instr->toString() << std::endl;
     switch (instr->getOpcode()) { 
         case IROpcode::ADD: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "add r" << rd << ", " << rs1 << ", " << rs2 << std::endl;
             break;
         }
         case IROpcode::SUB: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "sub r" << rd << ", " << rs1 << ", " << rs2 << std::endl;
             break;
         }
         case IROpcode::MUL: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "mul r" << rd << ", " << rs1 << ", " << rs2 << std::endl;
             break;
         }
         case IROpcode::DIV: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "div r" << rd << ", " << rs1 << ", " << rs2 << std::endl;
             break;
         }
         case IROpcode::MOD: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "mod r" << rd << ", " << rs1 << ", " << rs2 << std::endl;
             break;
         }
         case IROpcode::AND: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "and r" << rd << ", " << rs1 << ", " << rs2 << std::endl;
             break;
         }
         case IROpcode::OR: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "or r" << rd << ", " << rs1 << ", " << rs2 << std::endl;
             break;
         }
         case IROpcode::XOR: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "xor r" << rd << ", " << rs1 << ", " << rs2 << std::endl;
             break;
         }
         case IROpcode::SHL: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "shl r" << rd << ", " << rs1 << ", " << rs2 << std::endl;
             break;
         }
         case IROpcode::SHR: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "shr r" << rd << ", " << rs1 << ", " << rs2 << std::endl;
             break;
         }
         case IROpcode::EQ: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
-            output << "cmp r" << rs1 << ", " << rs2 << std::endl;
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
+            output << "cmp " << rs1 << ", " << rs2 << std::endl;
             std::string set_true = "set_true_" + std::to_string(label_counter);
             std::string done = "done_" + std::to_string(label_counter);
             label_counter++;
@@ -132,8 +262,19 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
         }
         case IROpcode::NE: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "cmp " << rs1 << ", " << rs2 << std::endl;
             std::string set_true = "set_true_" + std::to_string(label_counter);
             std::string done = "done_" + std::to_string(label_counter);
@@ -148,8 +289,19 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
         }
         case IROpcode::LT: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "cmp " << rs1 << ", " << rs2 << std::endl;
             std::string set_true = "set_true_" + std::to_string(label_counter);
             std::string done = "done_" + std::to_string(label_counter);
@@ -164,8 +316,19 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
         }
         case IROpcode::LE: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "cmp " << rs1 << ", " << rs2 << std::endl;
             std::string set_true = "set_true_" + std::to_string(label_counter);
             std::string done = "done_" + std::to_string(label_counter);
@@ -180,8 +343,19 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
         }
         case IROpcode::GT: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "cmp " << rs1 << ", " << rs2 << std::endl;
             std::string set_true = "set_true_" + std::to_string(label_counter);
             std::string done = "done_" + std::to_string(label_counter);
@@ -196,8 +370,19 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
         }
         case IROpcode::GE: {
             int rd = PhysicalReg(instr->getDest());
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            std::string rs2 = getOperandReg(instr->getSrc2());
+            std::string rs1, rs2;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                rs1 = "r_temp";
+            } else {
+                rs1 = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                rs2 = "r29";
+            } else {
+                rs2 = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
             output << "cmp " << rs1 << ", " << rs2 << std::endl;
             std::string set_true = "set_true_" + std::to_string(label_counter);
             std::string done = "done_" + std::to_string(label_counter);
@@ -253,13 +438,23 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             std::string* funcName = instr->getFuncName();
             std::vector<Operand*> args = instr->getArgs();
 
+            // 1. Find caller-saved registers that need to be preserved across this call
+            std::set<int> regs_to_save = getCallerSavedToPreserve(current_instr_idx);
+
+            // 2. Push caller-saved registers
+            for(int reg : regs_to_save) {
+                output << "push r" << reg << std::endl;
+            }
+
+            // 3. Set up arguments (first 8 in r4-r11)
             int count = std::min(8, static_cast<int>(args.size()));
             for(int i = 0; i < count; i++) {
                 std::string arg_reg = getOperandReg(args[i]);
                 output << "mov r" << 4 + i << ", " << arg_reg << std::endl;
             }
 
-            if(args.size() > 8) {  
+            // 4. Handle arguments beyond 8 (on stack)
+            if(args.size() > 8) {
                 output << "csrr r_temp, SP" << std::endl;
                 for(int i = 8; i < args.size(); i++) {
                     std::string arg_reg = getOperandReg(args[i]);
@@ -270,9 +465,11 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
                 output << "sub r_temp, r_temp, " << stack_size << std::endl;
                 output << "csrw r_temp, SP" << std::endl;
             }
-            
+
+            // 5. Make the call
             output << "call " << *funcName << std::endl;
 
+            // 6. Clean up stack arguments
             if(args.size() > 8) {
                 output << "csrr r_temp, SP" << std::endl;
                 int stack_size = (args.size() - 8) * 4;
@@ -280,6 +477,13 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
                 output << "csrw r_temp, SP" << std::endl;
             }
 
+            // 7. Pop caller-saved registers (reverse order)
+            std::vector<int> regs_vec(regs_to_save.begin(), regs_to_save.end());
+            for(int i = regs_vec.size() - 1; i >= 0; i--) {
+                output << "pop r" << regs_vec[i] << std::endl;
+            }
+
+            // 8. Move return value to destination
             if(instr->getDest() != nullptr) {
                 int rd = PhysicalReg(instr->getDest());
                 output << "mov r" << rd << ", r3" << std::endl;
@@ -290,35 +494,41 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             if(instr->getSrc1() == nullptr) {
                 output << "ret" << std::endl;
             } else {
-                int rs1 = PhysicalReg(instr->getSrc1());
-                output << "mov r3, r" << rs1 << std::endl;
+                std::string rs1 = getOperandReg(instr->getSrc1());
+                output << "mov r3, " << rs1 << std::endl;
                 output << "ret" << std::endl;
             }
             break;
         }
         case IROpcode::SEND: {
-            int value = PhysicalReg(instr->getSrc1());
+            std::string value_reg = getOperandReg(instr->getSrc1());
+            if(value_reg == "r_temp") {
+                output << "mov r29, r_temp" << std::endl;
+                value_reg = "r29";
+            }
             std::string* target_func = instr->getFuncName();
-            output << "storew r" << value << ", " << next_send_recv_addr << std::endl;
+            output << "mov r_temp, " << next_send_recv_addr << std::endl;
+            output << "storew " << value_reg << ", 0(r_temp)" << std::endl;
             next_send_recv_addr += 4;
             break;
         }
         case IROpcode::RECV: {
             int rd = PhysicalReg(instr->getDest());
             next_send_recv_addr -= 4;
-            output << "loadw r" << rd << ", " << next_send_recv_addr << std::endl;
+            output << "mov r_temp, " << next_send_recv_addr << std::endl;
+            output << "loadw r" << rd << ", 0(r_temp)" << std::endl;
             break;
         }
         case IROpcode::OUT: {
-            int rs1 = PhysicalReg(instr->getSrc1());
-            output << "csrr r_temp, SP" << std::endl; 
-            output << "storew r" << rs1 << ", " << offset << "(r_temp)" << std::endl;  
-            offset += 4;
+            output << "csrr r30, SP" << std::endl;
+            std::string rs1 = getOperandReg(instr->getSrc1());
+            output << "storew " << rs1 << ", " << offset << "(r30)" << std::endl;
+            offset -= 4;
             break;
         }
         case IROpcode::IN: {
             int rd = PhysicalReg(instr->getDest());
-            offset -= 4;
+            offset += 4;
             output << "csrr r_temp, SP" << std::endl;
             output << "loadw r" << rd << ", " << offset << "(r_temp)" << std::endl;
             break;
@@ -367,6 +577,10 @@ struct LiveRange {
 };
 
 void AssemblyEmitter::allocateReg(IRFunction* func) {
+    reg_assignment_info.clear();
+    vreg_last_use.clear();
+    spill_info.clear();
+
     auto params = func->getParameters();
     for(int i = 0; i < params.size() && i < 8; i++) {
         int vreg_num = params[i]->getVregNum();
@@ -374,7 +588,6 @@ void AssemblyEmitter::allocateReg(IRFunction* func) {
     }
 
     std::map<int, int> vreg_def;
-    std::map<int, int> vreg_last_use;
     std::vector<LiveRange> live_ranges;
 
     int instr_idx = 0;
@@ -532,4 +745,22 @@ void AssemblyEmitter::emitEpilogue(IRFunction* func) {
         output << "csrw r_temp, SP" << std::endl;
 
     }
+}
+bool AssemblyEmitter::isCallerSaved(int preg) {
+    // Caller-saved: r1-r15, r24-r28
+    // Callee-saved: r16-r23
+    // Special: r0 (zero), r29-r31 (temp/special)
+    return (preg >= 1 && preg <= 15) || (preg >= 24 && preg <= 28);
+}
+std::set<int> AssemblyEmitter::getCallerSavedToPreserve(int call_idx) {
+    std::set<int> regs_to_save;
+    for(const auto& mapping : reg_assignment_info) {
+        int vreg = mapping.first;
+        int preg = mapping.second;
+        // Save if: caller-saved AND vreg is still used after this call
+        if(isCallerSaved(preg) && vreg_last_use.count(vreg) && vreg_last_use[vreg] > call_idx) {
+            regs_to_save.insert(preg);
+        }
+    }
+    return regs_to_save;
 }

@@ -525,7 +525,7 @@ Stmt* Parser::parseRecvStmt() {
     expect(Token::LPAREN);
     std::string srcFunction = tokens[curr_pos].value;
     expect(Token::IDENTIFIER);
-    expect(Token::LARROW);
+    expect(Token::RARROW);
     std::string variableName = tokens[curr_pos].value;
     expect(Token::IDENTIFIER);
     expect(Token::RPAREN);

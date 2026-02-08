@@ -412,8 +412,11 @@ void IRBuilder::visitExprStmt(ExprStmt* node) {
     evaluateExpr(node->getExpression());
 }
 
-void IRBuilder::visitImportDecl(ImportDecl* node) {
+void IRBuilder::visitImportDecl(ImportDecl* node) { }
 
+void IRBuilder::visitPrintStmt(PrintStmt* node) {
+    Operand* value = evaluateExpr(node->getExpression());
+    curr_block->addInstruction(IRInstruction::createPrint(value));
 }
 
 void IRBuilder::visitFunctionDecl(FunctionDecl* node) {
@@ -484,6 +487,8 @@ void IRBuilder::evaluateStmt(Stmt* stmt) {
         visitBlockStmt(block);
     } else if(ExprStmt* expr = dynamic_cast<ExprStmt*>(stmt)) {
         visitExprStmt(expr);
+    } else if(PrintStmt* print = dynamic_cast<PrintStmt*>(stmt)) {
+        visitPrintStmt(print);
     }
 }
 

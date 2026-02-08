@@ -47,6 +47,7 @@ class IRBuilder {
         void visitRecvStmt(RecvStmt* node);
         void visitBlockStmt(BlockStmt* node);
         void visitExprStmt(ExprStmt* node);
+        void visitPrintStmt(PrintStmt* node);
 
         void visitImportDecl(ImportDecl* node);
         void visitFunctionDecl(FunctionDecl* node);

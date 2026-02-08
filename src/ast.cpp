@@ -114,6 +114,11 @@ ExprStmt::ExprStmt(Expr* expression, int32_t line, int32_t column)
 Expr* ExprStmt::getExpression() const { return expression; }
 void ExprStmt::accept(Visitor* v) { v->visit(this); }
 
+PrintStmt::PrintStmt(Expr* expression, int32_t line, int32_t column) 
+    : Stmt(line, column), expression(expression) {}
+Expr* PrintStmt::getExpression() const { return expression; }
+void PrintStmt::accept(Visitor* v) { v->visit(this); }
+
 FunctionDecl::FunctionDecl(const std::string& name, const std::vector<Parameter>& parameters, Token returnType, Stmt* body, int32_t line, int32_t column) 
     : ASTNode(line, column), name(name), parameters(parameters), returnType(returnType), body(body) {}
 std::string FunctionDecl::getName() const { return name; }

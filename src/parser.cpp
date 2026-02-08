@@ -381,6 +381,8 @@ Stmt* Parser::parseStatement() {
             return parseRecvStmt();
         case Token::LBRACE:
             return parseBlock();
+        case Token::PRINT:
+            return parsePrintStmt();
         default:
             return parseExprStmt();
     }
@@ -558,6 +560,18 @@ Stmt* Parser::parseBlock() {
     }
     expect(Token::RBRACE);
     return new BlockStmt(statements, line, column);
+}
+
+Stmt* Parser::parsePrintStmt() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
+
+    expect(Token::PRINT);
+    expect(Token::LPAREN);
+    Expr* expression = parseExpression();
+    expect(Token::RPAREN);
+    expect(Token::SEMICOLON);
+    return new PrintStmt(expression, line, column);
 }
 
 ImportDecl* Parser::parseImport() {

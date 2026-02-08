@@ -565,8 +565,10 @@ void SemanticAnalyzer::visit(ExprStmt* node) {
     node->getExpression()->accept(this);
 };
 
-void SemanticAnalyzer::visit(ImportDecl* node) {
+void SemanticAnalyzer::visit(ImportDecl* node) { }
 
+void SemanticAnalyzer::visit(PrintStmt* node) {
+    node->getExpression()->accept(this);
 }
 
 void SemanticAnalyzer::visit(FunctionDecl* node) { 

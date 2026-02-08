@@ -222,6 +222,15 @@ class ExprStmt : public Stmt {
         void accept(Visitor* v) override;
 };
 
+class PrintStmt : public Stmt {
+    private:
+        Expr* expression;
+    public:
+        PrintStmt(Expr* expression, int32_t line, int32_t column);
+        Expr* getExpression() const;
+        void accept(Visitor* v) override;
+};
+
 struct Parameter {
     Token type;
     std::string name;

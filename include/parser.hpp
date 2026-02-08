@@ -43,6 +43,7 @@ class Parser {
         Stmt* parseRecvStmt();
         Stmt* parseBlock();
         Stmt* parseExprStmt();
+        Stmt* parsePrintStmt();
 
         ImportDecl* parseImport();
         FunctionDecl* parseFunction();

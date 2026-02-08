@@ -156,6 +156,9 @@ IRInstruction* IRInstruction::createPhi(Operand* dest, const std::vector<std::pa
 IRInstruction* IRInstruction::createBranch(Operand* condition, Operand* true_label) {
     return new IRInstruction(IROpcode::BRANCH, nullptr, condition, true_label, nullptr, {}, {});
 }
+IRInstruction* IRInstruction::createPrint(Operand* value) {
+    return new IRInstruction(IROpcode::PRINT, nullptr, value, nullptr, nullptr, {}, {});
+}
 
 IROpcode IRInstruction::getOpcode() const { return opcode; }
 Operand* IRInstruction::getDest() const { return dest; }
@@ -281,6 +284,9 @@ std::string IRInstruction::toString() const {
             break;
         case IROpcode::IN:
             result = dest->toString() + " = IN";
+            break;
+        case IROpcode::PRINT:
+            return "PRINT " + src1->toString();
             break;
         default:
             result = "UNKNOWN";

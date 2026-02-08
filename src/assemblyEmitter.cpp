@@ -9,10 +9,26 @@ void AssemblyEmitter::emit(IRModule* module) {
     this->module = module;   
 
     output << "_start:" << std::endl;
+    output << "mov r_temp, 0" << std::endl;
+    output << "csrw IVTBR, r_temp" << std::endl;
+    output << "mov r_temp, _syscall_handler" << std::endl;
+    output << "storew r_temp, 20(r0)" << std::endl;
+
+    output << "mov r_temp, 1" << std::endl;
+    output << "csrw STATUS, r_temp" << std::endl;
+    output << "mov r_temp, 0x20" << std::endl;
+    output << "csrw IMASK, r_temp" << std::endl;
+
     output << "mov r_temp, 0xFFFFC" << std::endl;
     output << "csrw SP, r_temp" << std::endl;
     output << "call main" << std::endl;
     output << "hlt" << std::endl;
+    output << std::endl;
+
+    output << "_syscall_handler:" << std::endl;
+    output << "mov r_temp, 0x100" << std::endl;
+    output << "storew r1, 0(r_temp)" << std::endl;
+    output << "iret" << std::endl;
     output << std::endl;
 
     for(const auto& func : module->getFunctions()) {
@@ -438,22 +454,18 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             std::string* funcName = instr->getFuncName();
             std::vector<Operand*> args = instr->getArgs();
 
-            // 1. Find caller-saved registers that need to be preserved across this call
             std::set<int> regs_to_save = getCallerSavedToPreserve(current_instr_idx);
 
-            // 2. Push caller-saved registers
             for(int reg : regs_to_save) {
                 output << "push r" << reg << std::endl;
             }
 
-            // 3. Set up arguments (first 8 in r4-r11)
             int count = std::min(8, static_cast<int>(args.size()));
             for(int i = 0; i < count; i++) {
                 std::string arg_reg = getOperandReg(args[i]);
                 output << "mov r" << 4 + i << ", " << arg_reg << std::endl;
             }
 
-            // 4. Handle arguments beyond 8 (on stack)
             if(args.size() > 8) {
                 output << "csrr r_temp, SP" << std::endl;
                 for(int i = 8; i < args.size(); i++) {
@@ -466,10 +478,8 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
                 output << "csrw r_temp, SP" << std::endl;
             }
 
-            // 5. Make the call
             output << "call " << *funcName << std::endl;
 
-            // 6. Clean up stack arguments
             if(args.size() > 8) {
                 output << "csrr r_temp, SP" << std::endl;
                 int stack_size = (args.size() - 8) * 4;
@@ -477,13 +487,11 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
                 output << "csrw r_temp, SP" << std::endl;
             }
 
-            // 7. Pop caller-saved registers (reverse order)
             std::vector<int> regs_vec(regs_to_save.begin(), regs_to_save.end());
             for(int i = regs_vec.size() - 1; i >= 0; i--) {
                 output << "pop r" << regs_vec[i] << std::endl;
             }
 
-            // 8. Move return value to destination
             if(instr->getDest() != nullptr) {
                 int rd = PhysicalReg(instr->getDest());
                 output << "mov r" << rd << ", r3" << std::endl;
@@ -566,6 +574,13 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             break;
         }
         case IROpcode::PHI: break;
+        case IROpcode::PRINT: {
+            std::string rs1 = getOperandReg(instr->getSrc1());
+            output << "mov r1, " << rs1 << std::endl;
+            output << "mov r0, 1" << std::endl;
+            output << "syscall" << std::endl;
+            break;
+        }
         default: break;
     }
 }

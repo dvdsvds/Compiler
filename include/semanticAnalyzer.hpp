@@ -83,6 +83,7 @@ class SemanticAnalyzer : public Visitor {
         void visit(RecvStmt* node) override;
         void visit(BlockStmt* node) override;
         void visit(ExprStmt* node) override;
+        void visit(PrintStmt* node) override;
         void visit(ImportDecl* node) override;
         void visit(FunctionDecl* node) override;
         void visit(Program* node) override;

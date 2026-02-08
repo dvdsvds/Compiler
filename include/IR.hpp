@@ -13,6 +13,7 @@ enum class IROpcode {
     COPY, PHI,
     SEND, RECV,
     OUT, IN,
+    PRINT
 };
 
 enum class OperandType {
@@ -104,6 +105,7 @@ class IRInstruction {
         static IRInstruction* createCall(Operand* dest, const std::string& func_name, const std::vector<Operand*>& args);
         static IRInstruction* createPhi(Operand* dest, const std::vector<std::pair<Operand*, std::string>>& phi_operands);
         static IRInstruction* createBranch(Operand* condition, Operand* true_label);
+        static IRInstruction* createPrint(Operand* value);
 
         IROpcode getOpcode() const;
         Operand* getDest() const;

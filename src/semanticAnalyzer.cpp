@@ -565,6 +565,10 @@ void SemanticAnalyzer::visit(ExprStmt* node) {
     node->getExpression()->accept(this);
 };
 
+void SemanticAnalyzer::visit(ImportDecl* node) {
+
+}
+
 void SemanticAnalyzer::visit(FunctionDecl* node) { 
     track_symbol->enter_scope();
     

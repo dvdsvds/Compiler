@@ -122,7 +122,15 @@ Token FunctionDecl::getReturnType() const { return returnType; }
 Stmt* FunctionDecl::getBody() const { return body; }
 void FunctionDecl::accept(Visitor* v) { v->visit(this); }
 
-Program::Program(const std::vector<FunctionDecl*>& functions, int32_t line, int32_t column) 
-    : ASTNode(line, column), functions(functions) {}
+ImportDecl::ImportDecl(const std::string& moduleName, const std::vector<std::string>& symbols, int32_t line, int32_t column) 
+    : ASTNode(line, column), moduleName(moduleName), symbols(symbols) {}
+std::string ImportDecl::getModuleName() const { return moduleName; }
+std::vector<std::string> ImportDecl::getSymbols() const { return symbols; }
+bool ImportDecl::isSelectiveImport() const { return !symbols.empty(); }
+void ImportDecl::accept(Visitor* v) { v->visit(this); }
+
+Program::Program(const std::vector<ImportDecl*>& imports, const std::vector<FunctionDecl*>& functions, int32_t line, int32_t column) 
+    : ASTNode(line, column), imports(imports), functions(functions) {}
+std::vector<ImportDecl*> Program::getImports() const { return imports; }
 std::vector<FunctionDecl*> Program::getFunctions() const { return functions; }
 void Program::accept(Visitor* v) { v->visit(this); }

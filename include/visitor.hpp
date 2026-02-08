@@ -17,6 +17,7 @@ class SendStmt;
 class RecvStmt;
 class BlockStmt;
 class ExprStmt;
+class ImportDecl;
 class FunctionDecl;
 class Program;
 
@@ -40,6 +41,7 @@ class Visitor {
         virtual void visit(RecvStmt* node) = 0;
         virtual void visit(BlockStmt* node) = 0;
         virtual void visit(ExprStmt* node) = 0;
+        virtual void visit(ImportDecl* node) = 0;
         virtual void visit(FunctionDecl* node) = 0;
         virtual void visit(Program* node) = 0;
 };

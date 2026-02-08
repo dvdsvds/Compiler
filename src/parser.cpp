@@ -4,11 +4,18 @@
 Parser::Parser(const std::vector<TokenData>& tokens) : tokens(tokens), curr_pos(0) {}
 
 Program* Parser::parse() {
+    std::vector<ImportDecl*> imports;
     std::vector<FunctionDecl*> functions;
+
+    while(check(Token::IMPORT)) {
+        imports.push_back(parseImport());
+    }
+
     while(!isAtEnd()) {
         functions.push_back(parseFunction());
     }
-    return new Program(functions, 0, 0);
+
+    return new Program(imports, functions, 0, 0);
 }
 
 Token Parser::peek() {
@@ -553,6 +560,36 @@ Stmt* Parser::parseBlock() {
     return new BlockStmt(statements, line, column);
 }
 
+ImportDecl* Parser::parseImport() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
+
+    expect(Token::IMPORT);
+
+    if(!check(Token::IDENTIFIER)) {
+        throw std::runtime_error("Expected module name after 'import'");
+    }
+
+    std::string moduleName = tokens[curr_pos].value;
+    advance();
+
+    std::vector<std::string> symbols;
+    if(match(Token::LBRACE)) {
+        do { 
+            if(!check(Token::IDENTIFIER)) {
+                throw std::runtime_error("Expected symbol name in import");
+            }
+            symbols.push_back(tokens[curr_pos].value);
+            advance();
+        } while(match(Token::COMMA));
+
+        expect(Token::RBRACE);
+    }
+
+    expect(Token::SEMICOLON);
+
+    return new ImportDecl(moduleName, symbols, line, column);
+}
 FunctionDecl* Parser::parseFunction() {
     int32_t line = getLine();
     int32_t column = getColumn();

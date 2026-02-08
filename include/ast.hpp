@@ -242,11 +242,25 @@ class FunctionDecl : public ASTNode {
         void accept(Visitor* v) override;
 };
 
+class ImportDecl : public ASTNode {
+    private:
+        std::string moduleName;
+        std::vector<std::string> symbols;
+    public:
+        ImportDecl(const std::string& moduleName, const std::vector<std::string>& symbols, int32_t line, int32_t column);
+        std::string getModuleName() const;
+        std::vector<std::string> getSymbols() const;
+        bool isSelectiveImport() const;
+        void accept(Visitor* v) override;
+};
+
 class Program : public ASTNode {
     private:
+        std::vector<ImportDecl*> imports;
         std::vector<FunctionDecl*> functions;
     public:
-        Program(const std::vector<FunctionDecl*>& functions, int32_t line, int32_t column);
+        Program(const std::vector<ImportDecl*>& imports, const std::vector<FunctionDecl*>& functions, int32_t line, int32_t column);
+        std::vector<ImportDecl*> getImports() const;
         std::vector<FunctionDecl*> getFunctions() const;
         void accept(Visitor* v) override;
 };

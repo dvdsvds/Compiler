@@ -274,7 +274,7 @@ void IRBuilder::visitLoopStmt(LoopStmt* node) {
     bool prev_in_loop_body = in_loop_body;
     in_loop_body = false;
 
-    std::string entry_label_str = curr_block->getLabel();  // ← 현재 블록이 entry
+    std::string entry_label_str = curr_block->getLabel();  
     std::string loop_label_str = newLabel();
     std::string body_label_str = newLabel();
     std::string end_label_str = newLabel();
@@ -305,15 +305,13 @@ void IRBuilder::visitLoopStmt(LoopStmt* node) {
         }
     }
     
-    // entry -> loop으로 점프
-    BasicBlock* entry_block = curr_block;  // ← 현재 블록 저장
+    BasicBlock* entry_block = curr_block; 
     IRInstruction* entry_jump = IRInstruction::createJump(loop_label);
     curr_block->addInstruction(entry_jump);
     
     BasicBlock* loop_block = new BasicBlock(loop_label_str);
     curr_function->addBasicBlock(loop_block);
     
-    // ← CFG 연결: entry -> loop
     entry_block->addSuccessor(loop_block);
     loop_block->addPredecessor(entry_block);
     
@@ -342,7 +340,6 @@ void IRBuilder::visitLoopStmt(LoopStmt* node) {
         IRInstruction* end_jump_instr = IRInstruction::createJump(end_label);
         curr_block->addInstruction(end_jump_instr);
         
-        // ← CFG 연결: loop -> body, loop -> end
         loop_block->addSuccessor(body_block);
         body_block->addPredecessor(loop_block);
         loop_block->addSuccessor(end_block);
@@ -413,6 +410,10 @@ void IRBuilder::visitBlockStmt(BlockStmt* node) {
 }
 void IRBuilder::visitExprStmt(ExprStmt* node) {
     evaluateExpr(node->getExpression());
+}
+
+void IRBuilder::visitImportDecl(ImportDecl* node) {
+
 }
 
 void IRBuilder::visitFunctionDecl(FunctionDecl* node) {

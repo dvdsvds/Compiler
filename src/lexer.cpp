@@ -1,6 +1,7 @@
 #include "lexer.hpp"
 
 Lexer::Lexer(const std::string& src) : source(src), pos(0), line(1), column(0) {
+    keywords["import"] = Token::IMPORT;
     keywords["record"] = Token::RECORD;
     keywords["enum"] = Token::ENUM;
     keywords["if"] = Token::IF;

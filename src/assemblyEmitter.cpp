@@ -297,8 +297,8 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             std::string set_true = "set_true_" + std::to_string(label_counter);
             std::string done = "done_" + std::to_string(label_counter);
             label_counter++;
-            output << "mov r" << rd << ", 0" << std::endl;
             output << "bjmp EQ, " << set_true << std::endl;
+            output << "mov r" << rd << ", 0" << std::endl;
             output << "jmp " << done << std::endl;
             output << set_true << ":" << std::endl;
             output << "mov r" << rd << ", 1" << std::endl;
@@ -324,8 +324,8 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             std::string set_true = "set_true_" + std::to_string(label_counter);
             std::string done = "done_" + std::to_string(label_counter);
             label_counter++;
-            output << "mov r" << rd << ", 0" << std::endl;
             output << "bjmp NE, " << set_true << std::endl;
+            output << "mov r" << rd << ", 0" << std::endl;
             output << "jmp " << done << std::endl;
             output << set_true << ":" << std::endl;
             output << "mov r" << rd << ", 1" << std::endl;
@@ -351,8 +351,8 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             std::string set_true = "set_true_" + std::to_string(label_counter);
             std::string done = "done_" + std::to_string(label_counter);
             label_counter++;
-            output << "mov r" << rd << ", 0" << std::endl;
             output << "bjmp LT, " << set_true << std::endl;
+            output << "mov r" << rd << ", 0" << std::endl;
             output << "jmp " << done << std::endl;
             output << set_true << ":" << std::endl;
             output << "mov r" << rd << ", 1" << std::endl;
@@ -378,8 +378,8 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             std::string set_true = "set_true_" + std::to_string(label_counter);
             std::string done = "done_" + std::to_string(label_counter);
             label_counter++;
-            output << "mov r" << rd << ", 0" << std::endl;
             output << "bjmp LE, " << set_true << std::endl;
+            output << "mov r" << rd << ", 0" << std::endl;
             output << "jmp " << done << std::endl;
             output << set_true << ":" << std::endl;
             output << "mov r" << rd << ", 1" << std::endl;
@@ -405,8 +405,8 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             std::string set_true = "set_true_" + std::to_string(label_counter);
             std::string done = "done_" + std::to_string(label_counter);
             label_counter++;
-            output << "mov r" << rd << ", 0" << std::endl;
             output << "bjmp GT, " << set_true << std::endl;
+            output << "mov r" << rd << ", 0" << std::endl;
             output << "jmp " << done << std::endl;
             output << set_true << ":" << std::endl;
             output << "mov r" << rd << ", 1" << std::endl;
@@ -432,8 +432,8 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             std::string set_true = "set_true_" + std::to_string(label_counter);
             std::string done = "done_" + std::to_string(label_counter);
             label_counter++;
-            output << "mov r" << rd << ", 0" << std::endl;
             output << "bjmp GE, " << set_true << std::endl;
+            output << "mov r" << rd << ", 0" << std::endl;
             output << "jmp " << done << std::endl;
             output << set_true << ":" << std::endl;
             output << "mov r" << rd << ", 1" << std::endl;
@@ -651,7 +651,12 @@ void AssemblyEmitter::allocateReg(IRFunction* func) {
     for(const auto& block : func->getBasicBlocks()) {
         for(const auto& instr : block->getInstructions()) {
             if(instr->getDest() != nullptr && instr->getDest()->isVirtualReg()) {
-                vreg_def[instr->getDest()->getVregNum()] = instr_idx;
+                int vreg = instr->getDest()->getVregNum();
+                if(vreg_def.find(vreg) == vreg_def.end()) {
+                    vreg_def[vreg] = instr_idx; 
+                } else {
+                    vreg_last_use[vreg] = instr_idx;
+                }
             }
             if(instr->getSrc1() != nullptr && instr->getSrc1()->isVirtualReg()) {
                 vreg_last_use[instr->getSrc1()->getVregNum()] = instr_idx;

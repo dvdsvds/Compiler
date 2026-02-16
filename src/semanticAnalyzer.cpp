@@ -490,7 +490,10 @@ void SemanticAnalyzer::visit(LoopStmt* node) {
         node->getIncrement()->accept(this);
     }
 
+    bool prev_in_loop = in_loop;
+    in_loop = true;
     node->getBody()->accept(this);
+    in_loop = prev_in_loop;
 
     track_symbol->exit_scope();
 };
@@ -512,6 +515,18 @@ void SemanticAnalyzer::visit(ReturnStmt* node) {
         }
     }
 };
+
+void SemanticAnalyzer::visit(BreakStmt* node) { 
+    if(!in_loop) {
+        add_error({"break statment must be inside a loop", errorType::OUTSIDE_LOOP, node->get_line(), node->get_column()});
+    }
+}
+
+void SemanticAnalyzer::visit(ContinueStmt* node) { 
+    if(!in_loop) {
+        add_error({"continue statment must be inside a loop", errorType::OUTSIDE_LOOP, node->get_line(), node->get_column()});
+    }
+}
 
 void SemanticAnalyzer::visit(SendStmt* node) { 
     Symbol* varSymbol = track_symbol->lookup(node->getVariableName());

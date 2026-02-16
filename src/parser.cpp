@@ -387,6 +387,10 @@ Stmt* Parser::parseStatement() {
             return parseBlock();
         case Token::PRINT:
             return parsePrintStmt();
+        case Token::BREAK:
+            return parseBreakStmt();
+        case Token::CONTINUE:
+            return parseContinueStmt();
         default:
             return parseExprStmt();
     }
@@ -474,7 +478,13 @@ Stmt* Parser::parseLoopStmt() {
     Expr* condition = nullptr;
     Expr* increment = nullptr;
     
-    if (semicolonCount == 2) {
+    if (semicolonCount == 1) {
+        condition = parseExpression();
+        expect(Token::SEMICOLON);
+        if (peek() != Token::RPAREN) {
+            increment = parseExpression();
+        }
+    } else if(semicolonCount == 2) {
         if (peek() != Token::SEMICOLON) {
             init = parseStatement();
         } else {
@@ -489,10 +499,8 @@ Stmt* Parser::parseLoopStmt() {
         if (peek() != Token::RPAREN) {
             increment = parseExpression();
         }
-        
     } else if (semicolonCount == 0) {
         condition = parseExpression();
-        
     } else {
         throw std::runtime_error("loop statement must have either 0 or 2 semicolons");
     }
@@ -516,6 +524,21 @@ Stmt* Parser::parseReturnStmt() {
     return new ReturnStmt(returnValue, line, column);
 }
 
+Stmt* Parser::parseBreakStmt() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
+    expect(Token::BREAK);
+    expect(Token::SEMICOLON);
+    return new BreakStmt(line, column);
+}
+
+Stmt* Parser::parseContinueStmt() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
+    expect(Token::CONTINUE);
+    expect(Token::SEMICOLON);
+    return new ContinueStmt(line, column);
+}
 Stmt* Parser::parseSendStmt() {
     int32_t line = getLine();
     int32_t column = getColumn();

@@ -18,6 +18,8 @@ class IRBuilder {
         std::map<std::string, Operand*> out_values;
         bool in_loop_body;
         int string_counter = 0;
+        std::string current_loop_end_label;
+        std::string current_loop_start_label;
 
         std::set<std::string> findModifiedVars(Stmt* stmt);
         Operand* evaluateExpr(Expr* expr);
@@ -44,6 +46,8 @@ class IRBuilder {
         void visitIfStmt(IfStmt* node);
         void visitLoopStmt(LoopStmt* node);
         void visitReturnStmt(ReturnStmt* node);
+        void visitBreakStmt(BreakStmt* node);
+        void visitContinueStmt(ContinueStmt* node);
         void visitSendStmt(SendStmt* node);
         void visitRecvStmt(RecvStmt* node);
         void visitBlockStmt(BlockStmt* node);

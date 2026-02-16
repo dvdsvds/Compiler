@@ -52,6 +52,7 @@ class SemanticAnalyzer : public Visitor {
         std::map<std::string, std::vector<RecvInfo>> function_recvs;
         std::vector<SendInfo> all_sends;
         std::string curr_function_name;
+        bool in_loop = false;
 
     public:
         SemanticAnalyzer(SymbolTable* track_symbol);
@@ -79,6 +80,8 @@ class SemanticAnalyzer : public Visitor {
         void visit(IfStmt* node) override;
         void visit(LoopStmt* node) override;
         void visit(ReturnStmt* node) override;
+        void visit(BreakStmt* noode) override;
+        void visit(ContinueStmt* noode) override;
         void visit(SendStmt* node) override;
         void visit(RecvStmt* node) override;
         void visit(BlockStmt* node) override;

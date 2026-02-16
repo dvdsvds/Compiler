@@ -90,6 +90,12 @@ ReturnStmt::ReturnStmt(Expr* returnValue, int32_t line, int32_t column)
 Expr* ReturnStmt::getReturnValue() const { return returnValue; }
 void ReturnStmt::accept(Visitor* v) { v->visit(this); }
 
+BreakStmt::BreakStmt(int line, int col) : Stmt(line, col) {}
+void BreakStmt::accept(Visitor* v) { v->visit(this); }
+
+ContinueStmt::ContinueStmt(int line, int col) : Stmt(line, col) {}
+void ContinueStmt::accept(Visitor* v) { v->visit(this); }
+
 SendStmt::SendStmt(const std::string& variableName, const std::string& targetName, int32_t line, int32_t column) 
     : Stmt(line, column), variableName(variableName), targetName(targetName) {}
 std::string SendStmt::getVariableName() const { return variableName; }

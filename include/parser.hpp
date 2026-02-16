@@ -39,6 +39,8 @@ class Parser {
         Stmt* parseIfStmt();
         Stmt* parseLoopStmt();
         Stmt* parseReturnStmt();
+        Stmt* parseBreakStmt();
+        Stmt* parseContinueStmt();
         Stmt* parseSendStmt();
         Stmt* parseRecvStmt();
         Stmt* parseBlock();

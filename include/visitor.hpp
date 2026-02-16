@@ -13,6 +13,8 @@ class AssignStmt;
 class IfStmt;
 class LoopStmt;
 class ReturnStmt;
+class BreakStmt;
+class ContinueStmt;
 class SendStmt;
 class RecvStmt;
 class BlockStmt;
@@ -38,6 +40,8 @@ class Visitor {
         virtual void visit(IfStmt* node) = 0;
         virtual void visit(LoopStmt* node) = 0;
         virtual void visit(ReturnStmt* node) = 0;
+        virtual void visit(BreakStmt* node) = 0;
+        virtual void visit(ContinueStmt* node) = 0;
         virtual void visit(SendStmt* node) = 0;
         virtual void visit(RecvStmt* node) = 0;
         virtual void visit(BlockStmt* node) = 0;

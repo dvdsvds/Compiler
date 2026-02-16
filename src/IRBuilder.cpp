@@ -363,30 +363,38 @@ void IRBuilder::visitLoopStmt(LoopStmt* node) {
         IRInstruction* body_jump_instr = IRInstruction::createJump(body_label);
         curr_block->addInstruction(body_jump_instr);
         
-        // ← CFG 연결: loop -> body
         loop_block->addSuccessor(body_block);
         body_block->addPredecessor(loop_block);
     }
     
     curr_block = body_block;
     
+    std::string prev_loop_end = current_loop_end_label;
+    std::string prev_loop_start = current_loop_start_label;
+    current_loop_end_label = end_label_str;
+    current_loop_start_label = loop_label_str;
+
     in_loop_body = true;
     evaluateStmt(node->getBody());
     in_loop_body = prev_in_loop_body;
+    current_loop_end_label = prev_loop_end;
+    current_loop_start_label = prev_loop_start;
     
     if(node->getIncrement() != nullptr) {
         evaluateExpr(node->getIncrement());
     }
     
+    std::string back_edge_label = curr_block->getLabel();
+
     for(const auto& var_name : valid_vars) {
-        phi_instructions[var_name]->addPhiOperand(local_vars[var_name], body_label_str);
+        phi_instructions[var_name]->addPhiOperand(local_vars[var_name], back_edge_label);
     }
 
     IRInstruction* jump_instr = IRInstruction::createJump(loop_label);
     curr_block->addInstruction(jump_instr);
     
-    body_block->addSuccessor(loop_block);
-    loop_block->addPredecessor(body_block);
+    curr_block->addSuccessor(loop_block);
+    loop_block->addPredecessor(curr_block);
     
     curr_block = end_block;
 
@@ -402,6 +410,14 @@ void IRBuilder::visitReturnStmt(ReturnStmt* node) {
 
     IRInstruction* return_instr = IRInstruction::createReturn(return_value);
     curr_block->addInstruction(return_instr);
+}
+void IRBuilder::visitBreakStmt(BreakStmt* node) {
+    Operand* target = Operand::createLabel(current_loop_end_label);
+    curr_block->addInstruction(IRInstruction::createJump(target));
+}
+void IRBuilder::visitContinueStmt(ContinueStmt* node) {
+    Operand* target = Operand::createLabel(current_loop_start_label);
+    curr_block->addInstruction(IRInstruction::createJump(target));
 }
 void IRBuilder::visitSendStmt(SendStmt* node) {
     curr_block->addInstruction(IRInstruction::createSend(local_vars[node->getVariableName()], node->getTargetName()));
@@ -494,6 +510,10 @@ void IRBuilder::evaluateStmt(Stmt* stmt) {
         visitLoopStmt(loop);
     } else if(ReturnStmt* returns = dynamic_cast<ReturnStmt*>(stmt)) {
         visitReturnStmt(returns);
+    } else if(BreakStmt* bs = dynamic_cast<BreakStmt*>(stmt)) {
+        visitBreakStmt(bs);
+    } else if(ContinueStmt* cs = dynamic_cast<ContinueStmt*>(stmt)) {
+        visitContinueStmt(cs);
     } else if(SendStmt* send = dynamic_cast<SendStmt*>(stmt)) {
         visitSendStmt(send);
     } else if(RecvStmt* recv = dynamic_cast<RecvStmt*>(stmt)) {

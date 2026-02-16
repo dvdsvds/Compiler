@@ -179,6 +179,18 @@ class ReturnStmt : public Stmt {
         void accept(Visitor* v) override;
 };
 
+class BreakStmt : public Stmt {
+    public:
+        BreakStmt(int line, int col);
+        void accept(Visitor* v) override;
+};
+
+class ContinueStmt : public Stmt {
+    public:
+        ContinueStmt(int line, int col);
+        void accept(Visitor* v) override;
+};
+
 class SendStmt : public Stmt {
     private:
         std::string variableName;

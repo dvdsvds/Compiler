@@ -1,5 +1,5 @@
 #include "assemblyEmitter.hpp"
-#include <iostream>
+#include <cstdint>
 #include <algorithm>
 #include <set>
 
@@ -9,10 +9,10 @@ void AssemblyEmitter::emit(IRModule* module) {
     this->module = module;   
 
     output << "_start:" << std::endl;
-    output << "mov r_temp, 0" << std::endl;
+    output << "mov r_temp, 0x1000" << std::endl;
     output << "csrw IVTBR, r_temp" << std::endl;
-    output << "mov r_temp, _syscall_handler" << std::endl;
-    output << "storew r_temp, 20(r0)" << std::endl;
+    output << "mov r29, _syscall_handler" << std::endl;
+    output << "storew r29, 20(r_temp)" << std::endl;
 
     output << "mov r_temp, 1" << std::endl;
     output << "csrw STATUS, r_temp" << std::endl;
@@ -26,13 +26,42 @@ void AssemblyEmitter::emit(IRModule* module) {
     output << std::endl;
 
     output << "_syscall_handler:" << std::endl;
+    output << "cmp r28, 1" << std::endl;
+    output << "bjmp EQ, _print_int" << std::endl;
+    output << "cmp r28, 2" << std::endl;
+    output << "bjmp EQ, _print_bool" << std::endl;
+    output << "cmp r28, 3" << std::endl;
+    output << "bjmp EQ, _print_str" << std::endl;
+    output << "jmp _syscall_end" << std::endl;
+    output << "_print_int:" << std::endl;
     output << "mov r_temp, 0x100" << std::endl;
     output << "storew r1, 0(r_temp)" << std::endl;
+    output << "jmp _syscall_end" << std::endl;
+    output << "_print_bool:" << std::endl;
+    output << "mov r_temp, 0x104" << std::endl;
+    output << "storew r1, 0(r_temp)" << std::endl;
+    output << "jmp _syscall_end" << std::endl;
+    output << "_print_str:" << std::endl;
+    output << "mov r_temp, 0x108" << std::endl;
+    output << "storew r1, 0(r_temp)" << std::endl;
+    output << "_syscall_end:" << std::endl;
     output << "iret" << std::endl;
     output << std::endl;
 
     for(const auto& func : module->getFunctions()) {
         emitFunction(func);
+    }
+
+    for(auto& [label, value] : module->getStringLiterals()) {
+        output << label << ":" << std::endl;
+        std::string data = value + '\0';
+        for(size_t i = 0; i < data.size(); i += 4) {
+            uint32_t word = 0;
+            for(int j = 0; j < 4 && (i + j) < data.size(); j++) {
+                word |= (static_cast<uint8_t>(data[i + j]) << (j * 8));
+            }
+            output << ".word " << word << std::endl;
+        }
     }
 }
 void AssemblyEmitter::emitFunction(IRFunction* func) {
@@ -575,9 +604,22 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
         }
         case IROpcode::PHI: break;
         case IROpcode::PRINT: {
-            std::string rs1 = getOperandReg(instr->getSrc1());
-            output << "mov r1, " << rs1 << std::endl;
-            output << "mov r0, 1" << std::endl;
+            Operand* src = instr->getSrc1();
+            if(src->isGlobal()) {
+                output << "mov r1, " << *src->globalName() << std::endl;
+            } else {
+                std::string rs1 = getOperandReg(src);
+                output << "mov r1, " << rs1 << std::endl;
+            }
+            
+            Token dataType = instr->getSrc1()->getDataType();
+            if(dataType == Token::BOOL) {
+                output << "mov r28, 2" << std::endl;
+            } else if(dataType == Token::STRING) {
+                output << "mov r28, 3" << std::endl;
+            } else {
+                output << "mov r28, 1" << std::endl;
+            }
             output << "syscall" << std::endl;
             break;
         }
@@ -630,7 +672,7 @@ void AssemblyEmitter::allocateReg(IRFunction* func) {
             return a.start < b.start;
         });
 
-    std::set<int> available_regs = {1, 2, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29 ,30, 31};
+    std::set<int> available_regs = {1, 2, 12, 13, 14, 15, 24, 25, 26, 27};
     std::map<int, int> vreg_to_preg;
     std::vector<LiveRange> active;
     for(const auto& lr : live_ranges) {

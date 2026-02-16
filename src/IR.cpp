@@ -342,6 +342,7 @@ std::string IRFunction::toString() const {
 IRModule::IRModule() : functions({}), global_variables({}) {}
 void IRModule::addFunction(IRFunction* function) { functions.push_back(function); }
 void IRModule::addGlobalVariable(const std::string& name, Operand* variable) { global_variables.insert({name, variable}); }
+void IRModule::addStringLiteral(const std::string& label, const std::string& value) { string_literals.push_back({label, value}); }
 IRFunction* IRModule::getFunction(const std::string& name) const {
     for(auto& it : functions) {
         if(it->getName() == name) { return it; }
@@ -353,9 +354,9 @@ Operand* IRModule::getGlobalVariable(const std::string& name) const {
     if(it != global_variables.end()) { return it->second; }
     return nullptr;
 }
-
 std::vector<IRFunction*> IRModule::getFunctions() const { return functions; }
 std::map<std::string, Operand*> IRModule::getGlobalVariables() const { return global_variables; }
+std::vector<std::pair<std::string, std::string>>& IRModule::getStringLiterals() { return string_literals; }
 std::string IRModule::toString() const {
     std::string result = "";
     if (!global_variables.empty()) {

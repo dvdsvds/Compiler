@@ -319,6 +319,10 @@ Expr* Parser::parsePostfix() {
             Expr* index = parseExpression();
             expect(Token::RBRACKET);
             left = new ArrayAccessExpr(left, index, line, column);
+        } else if(match(Token::INC)) {
+            left = new BinaryExpr(left, Token::PLUS_EQ, new LiteralExpr(Token::NUMBER, "1", line, column), line, column);
+        } else if(match(Token::DEC)) {
+            left = new BinaryExpr(left, Token::MINUS_EQ, new LiteralExpr(Token::NUMBER, "1", line, column), line, column);
         } else {
             break;
         }

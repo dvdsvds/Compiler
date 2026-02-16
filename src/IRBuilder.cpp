@@ -20,6 +20,16 @@ void IRBuilder::exitScope() {
 }
 
 Operand* IRBuilder::visitLiteralExpr(LiteralExpr* node) {
+    Token tokenType = node->getTokenType();
+    if(tokenType == Token::TRUE) {
+        return Operand::createConstant(1, Token::BOOL);
+    } else if(tokenType == Token::FALSE) {
+        return Operand::createConstant(0, Token::BOOL);
+    } else if(tokenType == Token::STRING) {
+        std::string label = "_str_" + std::to_string(string_counter++);
+        module->addStringLiteral(label, node->getValue());
+        return Operand::createGlobal(label, Token::STRING);
+    }
     return Operand::createConstant(std::stoi(node->getValue()), node->getType());
 }
 Operand* IRBuilder::visitVariableExpr(VariableExpr* node) {
@@ -238,13 +248,23 @@ void IRBuilder::visitIfStmt(IfStmt* node) {
 
     std::string then_label_str = newLabel();
     Operand* then_label = Operand::createLabel(then_label_str);
-    std::string else_label_str;
-    Operand* else_label = nullptr;
     std::string end_label_str = newLabel();
     Operand* end_label = Operand::createLabel(end_label_str);
 
+    std::string else_label_str;
+    Operand* else_label = nullptr;
+    if(node->getElseBranch() != nullptr) {
+        else_label_str = newLabel();
+        else_label = Operand::createLabel(else_label_str);
+    } else {
+        else_label_str = end_label_str;
+        else_label = end_label;
+    }
+
     IRInstruction* branch_instr = IRInstruction::createBranch(condition, then_label);
     curr_block->addInstruction(branch_instr);
+
+    curr_block->addInstruction(IRInstruction::createJump(else_label));
 
     BasicBlock* then_block = new BasicBlock(then_label_str);
     curr_function->addBasicBlock(then_block);
@@ -253,17 +273,12 @@ void IRBuilder::visitIfStmt(IfStmt* node) {
     curr_block->addInstruction(IRInstruction::createJump(end_label)); 
 
     if(node->getElseBranch() != nullptr) {
-        else_label_str = newLabel();
-        else_label = Operand::createLabel(else_label_str);
-
         BasicBlock* else_block = new BasicBlock(else_label_str);
         curr_function->addBasicBlock(else_block);
         curr_block = else_block;
         evaluateStmt(node->getElseBranch());
         curr_block->addInstruction(IRInstruction::createJump(end_label));
-    } else {
-        else_label = end_label;
-    }
+    } 
 
     BasicBlock* end_block = new BasicBlock(end_label_str);
     curr_function->addBasicBlock(end_block);

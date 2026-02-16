@@ -17,6 +17,7 @@ class IRBuilder {
         std::vector<std::map<std::string, Operand*>> local_vars_stack;
         std::map<std::string, Operand*> out_values;
         bool in_loop_body;
+        int string_counter = 0;
 
         std::set<std::string> findModifiedVars(Stmt* stmt);
         Operand* evaluateExpr(Expr* expr);

@@ -170,6 +170,7 @@ class IRModule {
     private:
         std::vector<IRFunction*> functions;
         std::map<std::string, Operand*> global_variables;
+        std::vector<std::pair<std::string, std::string>> string_literals;
 
     public:
         IRModule();
@@ -179,9 +180,11 @@ class IRModule {
 
         IRFunction* getFunction(const std::string& name) const;
         Operand* getGlobalVariable(const std::string& name) const;
-
+        void addStringLiteral(const std::string& label, const std::string& value);
+        
         std::vector<IRFunction*> getFunctions() const;
         std::map<std::string, Operand*> getGlobalVariables() const;
+        std::vector<std::pair<std::string, std::string>>& getStringLiterals();
 
         std::string toString() const;
 };

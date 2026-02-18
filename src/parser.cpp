@@ -684,6 +684,7 @@ FunctionDecl* Parser::parseFunction() {
         while(true) {
             Token parameterType = advance();
             if(match(Token::LBRACKET)) {
+                if(check(Token::NUMBER)) { advance(); }
                 expect(Token::RBRACKET);
                 switch(parameterType) {
                     case Token::S8:

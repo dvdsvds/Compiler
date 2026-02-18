@@ -508,7 +508,10 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             int count = std::min(8, static_cast<int>(args.size()));
             for(int i = 0; i < count; i++) {
                 std::string arg_reg = getOperandReg(args[i]);
-                output << "mov r" << 4 + i << ", " << arg_reg << std::endl;
+                output << "push " << arg_reg << std::endl;
+            }
+            for(int i = count - 1; i >= 0; i--) {
+                output << "pop r" << 4 + i << std::endl;
             }
 
             if(args.size() > 8) {
@@ -665,7 +668,6 @@ void AssemblyEmitter::allocateReg(IRFunction* func) {
         int vreg_num = params[i]->getVregNum();
         reg_assignment_info[vreg_num] = 4 + i;
     }
-
     std::map<int, int> vreg_def;
     std::vector<LiveRange> live_ranges;
 
@@ -685,6 +687,11 @@ void AssemblyEmitter::allocateReg(IRFunction* func) {
             }
             if(instr->getSrc2() != nullptr && instr->getSrc2()->isVirtualReg()) {
                 vreg_last_use[instr->getSrc2()->getVregNum()] = instr_idx;
+            }
+            for(Operand* arg : instr->getArgs()) {
+                if(arg != nullptr && arg->isVirtualReg()) {
+                    vreg_last_use[arg->getVregNum()] = instr_idx;
+                }
             }
             instr_idx++;
 
@@ -721,6 +728,24 @@ void AssemblyEmitter::allocateReg(IRFunction* func) {
         [](const LiveRange& a, const LiveRange& b) {
             return a.start < b.start;
         });
+
+    for(const auto& lr : live_ranges) {
+        vreg_last_use[lr.vreg_num] = lr.end;
+    }
+
+    for(const auto& block : func->getBasicBlocks()) {
+        for(auto succ : block->getSuccessors()) {
+            if(block_start_idx.count(succ->getLabel()) && block_start_idx[succ->getLabel()] <= block_start_idx[block->getLabel()]) {
+                int loop_start = block_start_idx[succ->getLabel()];
+                int loop_end = block_end_idx[block->getLabel()];
+                for(auto& kv : vreg_last_use) {
+                    if(kv.second >= loop_start && kv.second <= loop_end) {
+                        kv.second = loop_end;
+                    }
+                }
+            }
+        }
+    }
 
     std::set<int> available_regs = {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27};
     for(int i = 0; i < params.size() && i < 8; i++) {

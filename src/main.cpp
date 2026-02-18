@@ -59,6 +59,7 @@ int main(int argc, char* argv[]) {
         Program* program = parser.parse();
 
         std::vector<FunctionDecl*> allFunctions = program->getFunctions();
+        std::vector<VarDeclStmt*> allGlobals = program->getGlobals();
 
         fs::path dylibPath = getExePath().parent_path() / "dylib";
 
@@ -95,7 +96,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        Program* mergedProgram = new Program({}, allFunctions, 0, 0);
+        Program* mergedProgram = new Program({}, allGlobals, allFunctions, 0, 0);
 
         SymbolTable symTable;
         SemanticAnalyzer analyzer(&symTable);

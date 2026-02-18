@@ -33,6 +33,13 @@ Operand* IRBuilder::visitLiteralExpr(LiteralExpr* node) {
     return Operand::createConstant(std::stoi(node->getValue()), node->getType());
 }
 Operand* IRBuilder::visitVariableExpr(VariableExpr* node) {
+    if(global_var_names.count(node->getName())) {
+        uint32_t addr = global_addr_map[node->getName()];
+        Operand* addr_op = Operand::createConstant(addr, Token::S32);
+        Operand* result = newVirtualReg(Token::S32);
+        curr_block->addInstruction(IRInstruction::createLoad(result, addr_op));
+        return result;
+    }
     if(var_address_taken[node->getName()]) {
         Operand* addr = local_vars[node->getName()];
         Operand* result = newVirtualReg(Token::S32);
@@ -99,13 +106,18 @@ Operand* IRBuilder::visitBinaryExpr(BinaryExpr* node) {
             }
             
             if(VariableExpr* var = dynamic_cast<VariableExpr*>(node->getLeft())) {
-                bool is_addr_taken = var_address_taken[var->getName()];
-                if(is_addr_taken) {
-                    Operand* addr = local_vars[var->getName()];
-                    IRInstruction* store_instr = IRInstruction::createStore(addr, result_value);
-                    curr_block->addInstruction(store_instr);
+                if(global_var_names.count(var->getName())) {
+                    uint32_t addr = global_addr_map[var->getName()];
+                    Operand* addr_op = Operand::createConstant(addr, Token::S32);
+                    curr_block->addInstruction(IRInstruction::createStore(addr_op, result_value));
                 } else {
-                    local_vars[var->getName()] = result_value;
+                    bool is_addr_taken = var_address_taken[var->getName()];
+                    if(is_addr_taken) {
+                        Operand* addr = local_vars[var->getName()];
+                        curr_block->addInstruction(IRInstruction::createStore(addr, result_value));
+                    } else {
+                        local_vars[var->getName()] = result_value;
+                    }
                 }
             } else if(DereferenceExpr* deref = dynamic_cast<DereferenceExpr*>(node->getLeft())) {
                 Operand* addr = evaluateExpr(deref->getExpr());
@@ -338,6 +350,13 @@ void IRBuilder::visitAssignStmt(AssignStmt* node) {
     Operand* value = evaluateExpr(node->getValue());
 
     if(VariableExpr* var = dynamic_cast<VariableExpr*>(node->getTarget())) {
+        if(global_var_names.count(var->getName())) {
+            uint32_t addr = global_addr_map[var->getName()];
+            Operand* addr_op = Operand::createConstant(addr, Token::S32);
+            curr_block->addInstruction(IRInstruction::createStore(addr_op, value));
+            return;
+        }
+
         bool is_addr_taken = var_address_taken[var->getName()];
 
         if(is_addr_taken) {
@@ -639,6 +658,15 @@ void IRBuilder::visitFunctionDecl(FunctionDecl* node) {
     curr_function->addBasicBlock(entry_block);
     curr_block = entry_block;
 
+    if(node->getName() == "main") {
+        for(const auto& global : pending_globals_inits) {
+            Operand* val = evaluateExpr(global->getInitializer());
+            uint32_t addr = global_addr_map[global->getName()];
+            Operand* addr_op = Operand::createConstant(addr, Token::S32);
+            curr_block->addInstruction(IRInstruction::createStore(addr_op, val));
+        }
+    }
+
     evaluateStmt(node->getBody());
     module->addFunction(func);
 
@@ -646,6 +674,15 @@ void IRBuilder::visitFunctionDecl(FunctionDecl* node) {
     var_address_taken.clear();
 }
 void IRBuilder::visitProgram(Program* node) {
+    for(const auto& global : node->getGlobals()) {
+        global_addr_map[global->getName()] = global_base;
+        global_var_names.insert(global->getName());
+        global_base += 4;
+        if(global->getInitializer() != nullptr) {
+            pending_globals_inits.push_back(global);
+        }
+    }
+
     for(const auto& function : node->getFunctions()) {
         visitFunctionDecl(function);
     }

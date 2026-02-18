@@ -451,20 +451,31 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
         }
         case IROpcode::LOAD: {
             int rd = PhysicalReg(instr->getDest());
-            int address = PhysicalReg(instr->getSrc1());
-            output << "loadw r" << rd << ", " << "0(r" << address << ")" << std::endl;
+            if(instr->getSrc1()->isConstant()) {
+                output  << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                output << "loadw r" << rd << ", 0(r_temp)" << std::endl;
+            } else {
+                int address = PhysicalReg(instr->getSrc1());
+                output << "loadw r" << rd << ", " << "0(r" << address << ")" << std::endl;
+            }
             break;
         }
         case IROpcode::STORE: {
-            int address = PhysicalReg(instr->getSrc1());
+            std::string addr_reg;
+            if(instr->getSrc1()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc1()->constValue() << std::endl;
+                addr_reg = "r_temp";
+            } else {
+                addr_reg = "r" + std::to_string(PhysicalReg(instr->getSrc1()));
+            }
             std::string value_str;
             if(instr->getSrc2()->isConstant()) {
-                output << "mov r_temp, " << instr->getSrc2()->constValue() << std::endl;
-                value_str = "r_temp";
+                output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
+                value_str = "r29";
             } else {
                 value_str = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
             }
-            output << "storew " << value_str << ", " << "0(r" << address << ")" << std::endl;
+            output << "storew " << value_str << ", " << "0(" << addr_reg << ")" << std::endl;
             break;
         }
         case IROpcode::ALLOCA: {

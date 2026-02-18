@@ -671,6 +671,11 @@ void SemanticAnalyzer::visit(FunctionDecl* node) {
 }
 
 void SemanticAnalyzer::visit(Program* node) { 
+    for(const auto& global : node->getGlobals()) {
+        TokenData varType = {global->getType(), "", global->get_line(), global->get_column()};
+        track_symbol->insert(global->getName(), {global->getName(), varType, track_symbol->curr_scope(), false, false});
+    }
+
     std::set<std::string> valid_functions;
     std::vector<TokenData> paramType;
     for(const auto& func : node->getFunctions()) {

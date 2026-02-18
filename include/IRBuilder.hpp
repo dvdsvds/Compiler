@@ -22,6 +22,10 @@ class IRBuilder {
         std::string current_loop_start_label;
         std::string current_loop_continue_label;
         std::vector<std::pair<BasicBlock*, std::map<std::string, Operand*>>> loop_continue_infos;
+        std::map<std::string, uint32_t> global_addr_map;
+        std::set<std::string> global_var_names;
+        uint32_t global_base = 0x00100000;
+        std::vector<VarDeclStmt*> pending_globals_inits;
 
         std::set<std::string> findModifiedVars(Stmt* stmt);
         Operand* evaluateExpr(Expr* expr);

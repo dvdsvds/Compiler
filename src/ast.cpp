@@ -156,8 +156,9 @@ std::vector<std::string> ImportDecl::getSymbols() const { return symbols; }
 bool ImportDecl::isSelectiveImport() const { return !symbols.empty(); }
 void ImportDecl::accept(Visitor* v) { v->visit(this); }
 
-Program::Program(const std::vector<ImportDecl*>& imports, const std::vector<FunctionDecl*>& functions, int32_t line, int32_t column) 
-    : ASTNode(line, column), imports(imports), functions(functions) {}
+Program::Program(const std::vector<ImportDecl*>& imports, const std::vector<VarDeclStmt*>& globals, const std::vector<FunctionDecl*>& functions, int32_t line, int32_t column) 
+    : ASTNode(line, column), imports(imports), globals(globals), functions(functions) {}
 std::vector<ImportDecl*> Program::getImports() const { return imports; }
+std::vector<VarDeclStmt*> Program::getGlobals() const { return globals; }
 std::vector<FunctionDecl*> Program::getFunctions() const { return functions; }
 void Program::accept(Visitor* v) { v->visit(this); }

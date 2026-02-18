@@ -11,11 +11,16 @@ Program* Parser::parse() {
         imports.push_back(parseImport());
     }
 
+    std::vector<VarDeclStmt*> globals;
     while(!isAtEnd()) {
-        functions.push_back(parseFunction());
+        if(isGlobalVar()) {
+            globals.push_back(static_cast<VarDeclStmt*>(parseVardecl()));
+        } else {
+            functions.push_back(parseFunction());
+        }
     }
 
-    return new Program(imports, functions, 0, 0);
+    return new Program(imports, globals, functions, 0, 0);
 }
 
 Token Parser::peek() {
@@ -25,6 +30,18 @@ Token Parser::peek() {
     return tokens[curr_pos].type;
 }
 
+bool Parser::isGlobalVar() {
+    Token t = peek();
+
+    if(t != Token::S32 && t != Token::S8 && t != Token::S16 && t != Token::US32 && t != Token::US8 && t != Token::US16 && t != Token::BOOL) {
+        return false;
+    }
+    if(curr_pos + 1 >= tokens.size()) return false;
+    if(tokens[curr_pos + 1].type != Token::IDENTIFIER) return false;
+    if(curr_pos + 2 >= tokens.size()) return true;
+    return tokens[curr_pos + 2].type != Token::LPAREN;
+
+}
 Token Parser::advance() {
     if(isAtEnd()) {
         return Token::EOF_TOKEN;

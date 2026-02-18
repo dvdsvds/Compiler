@@ -307,10 +307,12 @@ class ImportDecl : public ASTNode {
 class Program : public ASTNode {
     private:
         std::vector<ImportDecl*> imports;
+        std::vector<VarDeclStmt*> globals;
         std::vector<FunctionDecl*> functions;
     public:
-        Program(const std::vector<ImportDecl*>& imports, const std::vector<FunctionDecl*>& functions, int32_t line, int32_t column);
+        Program(const std::vector<ImportDecl*>& imports, const std::vector<VarDeclStmt*>& globals, const std::vector<FunctionDecl*>& functions, int32_t line, int32_t column);
         std::vector<ImportDecl*> getImports() const;
+        std::vector<VarDeclStmt*> getGlobals() const;
         std::vector<FunctionDecl*> getFunctions() const;
         void accept(Visitor* v) override;
 };

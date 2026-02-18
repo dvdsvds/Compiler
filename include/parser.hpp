@@ -53,5 +53,6 @@ class Parser {
         
     public:
         Parser(const std::vector<TokenData>& tokens);
+        bool isGlobalVar();
         Program* parse();
 };

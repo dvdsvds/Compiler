@@ -20,6 +20,8 @@ class IRBuilder {
         int string_counter = 0;
         std::string current_loop_end_label;
         std::string current_loop_start_label;
+        std::string current_loop_continue_label;
+        std::vector<std::pair<BasicBlock*, std::map<std::string, Operand*>>> loop_continue_infos;
 
         std::set<std::string> findModifiedVars(Stmt* stmt);
         Operand* evaluateExpr(Expr* expr);
@@ -40,6 +42,9 @@ class IRBuilder {
         Operand* visitArrayAccessExpr(ArrayAccessExpr* node);
         Operand* visitInExpr(InExpr* node);
         Operand* visitOutExpr(OutExpr* node);
+        Operand* visitReferenceExpr(ReferenceExpr* node);
+        Operand* visitDereferenceExpr(DereferenceExpr* node);
+        Operand* visitArrayExpr(ArrayExpr* node);
 
         void visitVarDeclStmt(VarDeclStmt* node);
         void visitAssignStmt(AssignStmt* node);

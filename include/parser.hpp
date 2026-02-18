@@ -30,7 +30,8 @@ class Parser {
         Expr* parseShift(); 
         Expr* parseAdditive();
         Expr* parseMultiplicative(); 
-        Expr* parseUnary();   
+        Expr* parseUnary();
+        Expr* parseArray(uint32_t array_size);
         Expr* parsePostfix();  
         Expr* parsePrimary(); 
 

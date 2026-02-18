@@ -263,7 +263,6 @@ void SemanticAnalyzer::visit(UnaryExpr* node) {
                         return;
                 }
             break;
-
         
         case Token::BIT_AND:
             if(VariableExpr* varExpr = dynamic_cast<VariableExpr*>(node->getOperand())) {
@@ -409,6 +408,62 @@ void SemanticAnalyzer::visit(OutExpr* node) {
     node->setType(Token::VOID);
 }
 
+void SemanticAnalyzer::visit(ReferenceExpr* node) {
+    Symbol* sym = track_symbol->lookup(node->getVarName());
+    if(!sym) {
+        add_error({"Variable '" + node->getVarName() + "' is not declared", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
+        return;
+    }
+
+    Token base_type = sym->get_type().type;
+    Token ptr_type = Token::PS32;
+    switch(base_type) {
+        case Token::S8: ptr_type = Token::PS8; break;
+        case Token::S16: ptr_type = Token::PS16; break;
+        case Token::S32: ptr_type = Token::PS32; break;
+        case Token::US8: ptr_type = Token::PUS8; break;
+        case Token::US16: ptr_type = Token::PUS16; break;
+        case Token::US32: ptr_type = Token::PUS32; break;
+        default: break;
+    }
+    node->setType(ptr_type);
+}
+
+void SemanticAnalyzer::visit(DereferenceExpr* node) {
+    node->getExpr()->accept(this);
+    Token ptr_type = node->getExpr()->getType();
+    Token base_type = Token::S32;
+    switch(ptr_type) {
+        case Token::PS8:  base_type = Token::S8; break;
+        case Token::PS16: base_type = Token::S16; break;
+        case Token::PS32: base_type = Token::S32; break;
+        case Token::PUS8:  base_type = Token::US8; break;
+        case Token::PUS16: base_type = Token::US16; break;
+        case Token::PUS32: base_type = Token::US32; break;
+        default: break;
+    }
+    node->setType(base_type);
+}
+
+void SemanticAnalyzer::visit(ArrayExpr* node) {
+    for(auto* elem : node->getElements()) {
+        elem->accept(this);
+    }
+    if(!node->getElements().empty()) {
+        Token elem_type = node->getElements()[0]->getType();
+        switch(elem_type) {
+            case Token::S8:  node->setType(Token::S8_ARRAY); break;
+            case Token::S16: node->setType(Token::S16_ARRAY); break;
+            case Token::S32: node->setType(Token::S32_ARRAY); break;
+            case Token::US8:  node->setType(Token::US8_ARRAY); break;
+            case Token::US16: node->setType(Token::US16_ARRAY); break;
+            case Token::US32: node->setType(Token::US32_ARRAY); break;
+            case Token::BOOL: node->setType(Token::BOOL_ARRAY); break;
+            default: break;
+        }
+    }
+}
+
 void SemanticAnalyzer::visit(VarDeclStmt* node) { 
     if(track_symbol->lookup_current_scope(node->getName()) != nullptr) {
         add_error({"Variable '" + node->getName() + "' is already declared in this scope", errorType::VARIABLE_REDECLARED, node->get_line(), node->get_column()});
@@ -417,11 +472,11 @@ void SemanticAnalyzer::visit(VarDeclStmt* node) {
 
     if(node->getInitializer() != nullptr) {
         node->getInitializer()->accept(this);
-        if(node->getInitializer()->getType() == Token::INVALID) {
+        if(node->getInitializer()->getType() == Token::INVALID && !dynamic_cast<ArrayExpr*>(node->getInitializer())) {
             return;
         }
 
-        if(node->getType() != node->getInitializer()->getType()) {
+        if(node->getType() != node->getInitializer()->getType() && !dynamic_cast<ArrayExpr*>(node->getInitializer())) {
             add_error({"Variable '" + node->getName() + "' initialization type mismatch: expected " + tokenToString(node->getType()) + ", got " + tokenToString(node->getInitializer()->getType()), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
             return;
         }

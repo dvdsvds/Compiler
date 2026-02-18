@@ -33,6 +33,12 @@ Operand* IRBuilder::visitLiteralExpr(LiteralExpr* node) {
     return Operand::createConstant(std::stoi(node->getValue()), node->getType());
 }
 Operand* IRBuilder::visitVariableExpr(VariableExpr* node) {
+    if(var_address_taken[node->getName()]) {
+        Operand* addr = local_vars[node->getName()];
+        Operand* result = newVirtualReg(Token::S32);
+        curr_block->addInstruction(IRInstruction::createLoad(result, addr));
+        return result;
+    }
     return local_vars[node->getName()];
 }
 Operand* IRBuilder::visitBinaryExpr(BinaryExpr* node) {
@@ -101,6 +107,18 @@ Operand* IRBuilder::visitBinaryExpr(BinaryExpr* node) {
                 } else {
                     local_vars[var->getName()] = result_value;
                 }
+            } else if(DereferenceExpr* deref = dynamic_cast<DereferenceExpr*>(node->getLeft())) {
+                Operand* addr = evaluateExpr(deref->getExpr());
+                curr_block->addInstruction(IRInstruction::createStore(addr, result_value));
+            } else if(ArrayAccessExpr* arrAccess = dynamic_cast<ArrayAccessExpr*>(node->getLeft())) {
+                Operand* array_addr = evaluateExpr(arrAccess->getArrayName());
+                Operand* index = evaluateExpr(arrAccess->getIndex());
+                Operand* element_size = Operand::createConstant(4, Token::S32);
+                Operand* offset = newVirtualReg(Token::S32);
+                curr_block->addInstruction(IRInstruction::createMul(offset, index, element_size));
+                Operand* actual_addr = newVirtualReg(Token::S32);
+                curr_block->addInstruction(IRInstruction::createAdd(actual_addr, array_addr, offset));
+                curr_block->addInstruction(IRInstruction::createStore(actual_addr, result_value));
             }
             return result_value;
         }
@@ -169,13 +187,6 @@ Operand* IRBuilder::visitArrayAccessExpr(ArrayAccessExpr* node) {
 
     return dest;
 }
-Operand* IRBuilder::visitOutExpr(OutExpr* node) {
-    Operand* value = local_vars[node->getVariableName()];
-    out_values[node->getVariableName()] = value;
-    IRInstruction* out_instr = IRInstruction::createOut(value);
-    curr_block->addInstruction(out_instr);
-    return nullptr;
-}
 Operand* IRBuilder::visitInExpr(InExpr* node) {
     if(out_values.find(node->getVariableName()) == out_values.end()) {
         return nullptr;
@@ -185,6 +196,63 @@ Operand* IRBuilder::visitInExpr(InExpr* node) {
     IRInstruction* in_instr = IRInstruction::createIn(dest);
     curr_block->addInstruction(in_instr);
     return dest;
+}
+Operand* IRBuilder::visitOutExpr(OutExpr* node) {
+    Operand* value = local_vars[node->getVariableName()];
+    out_values[node->getVariableName()] = value;
+    IRInstruction* out_instr = IRInstruction::createOut(value);
+    curr_block->addInstruction(out_instr);
+    return nullptr;
+}
+Operand* IRBuilder::visitReferenceExpr(ReferenceExpr* node) {
+    std::string name = node->getVarName();
+    if(!var_address_taken[name]) {
+        Operand* old_var = local_vars[name];
+        if(old_var->isConstant()) {
+            Operand* temp = newVirtualReg(Token::S32);
+            curr_block->addInstruction(IRInstruction::createCopy(temp, old_var));
+            old_var = temp;
+        }
+        Operand* addr = newVirtualReg(Token::PS32);
+        Operand* size = Operand::createConstant(4, Token::S32);
+        curr_block->addInstruction(IRInstruction::createAlloca(addr, size));
+        curr_block->addInstruction(IRInstruction::createStore(addr, old_var));
+        local_vars[name] = addr;
+        var_address_taken[name] = true;
+    }
+    return local_vars[name];
+}
+Operand* IRBuilder::visitDereferenceExpr(DereferenceExpr* node) {
+        Operand* addr = evaluateExpr(node->getExpr());
+        Operand* result = newVirtualReg(Token::PS32);
+        curr_block->addInstruction(IRInstruction::createLoad(result, addr));
+        return result;
+}
+
+Operand* IRBuilder::visitArrayExpr(ArrayExpr* node) {
+    uint32_t size = node->getArraySize();
+    int elem_size = 4;
+    uint32_t total_size = size * elem_size;
+
+    Operand* addr = newVirtualReg(Token::S32);
+    Operand* alloca_size = Operand::createConstant(total_size, Token::S32);
+    curr_block->addInstruction(IRInstruction::createAlloca(addr, alloca_size));
+
+    auto elemtens = node->getElements();
+    for(uint32_t i = 0; i < elemtens.size(); i++) {
+        Operand* val = evaluateExpr(elemtens[i]);
+        if(val->isConstant()) {
+            Operand* temp = newVirtualReg(Token::S32);
+            curr_block->addInstruction(IRInstruction::createCopy(temp, val));
+            val = temp;
+        }
+        Operand* offset = Operand::createConstant(i * elem_size, Token::S32);
+        Operand* elem_addr = newVirtualReg(Token::S32);
+        curr_block->addInstruction(IRInstruction::createAdd(elem_addr, addr, offset));
+        curr_block->addInstruction(IRInstruction::createStore(elem_addr, val));
+    }
+
+    return addr;
 }
 
 void IRBuilder::visitVarDeclStmt(VarDeclStmt* node) {
@@ -221,11 +289,20 @@ void IRBuilder::visitVarDeclStmt(VarDeclStmt* node) {
         curr_block->addInstruction(store_instr);
 
         local_vars[fname] = addr;
+    } else if(dynamic_cast<ArrayExpr*>(node->getInitializer())) {
+        Operand* addr_slot = newVirtualReg(Token::PS32);
+        Operand* slot_size = Operand::createConstant(4, Token::S32);
+        curr_block->addInstruction(IRInstruction::createAlloca(addr_slot, slot_size));
+        curr_block->addInstruction(IRInstruction::createStore(addr_slot, init_value));
+        local_vars[fname] = addr_slot;
+        var_address_taken[fname] = true;
     } else {
         local_vars[fname] = init_value; 
     }
 
-    var_address_taken[fname] = is_addr_taken;
+    if(!dynamic_cast<ArrayExpr*>(node->getInitializer())) {
+        var_address_taken[fname] = is_addr_taken;
+    }
 }
 void IRBuilder::visitAssignStmt(AssignStmt* node) {
     Operand* target = evaluateExpr(node->getTarget());
@@ -241,6 +318,20 @@ void IRBuilder::visitAssignStmt(AssignStmt* node) {
         } else {
             local_vars[var->getName()] = value;
         }
+    } else if(ArrayAccessExpr* arrAccess = dynamic_cast<ArrayAccessExpr*>(node->getTarget())) {
+        Operand* array_addr = evaluateExpr(arrAccess->getArrayName());
+        Operand* index = evaluateExpr(arrAccess->getIndex());
+
+        int size = 4;
+        Operand* element_size = Operand::createConstant(size, Token::S32);
+
+        Operand* offset = newVirtualReg(Token::S32);
+        curr_block->addInstruction(IRInstruction::createMul(offset, index, element_size));
+
+        Operand* actual_addr = newVirtualReg(Token::S32);
+        curr_block->addInstruction(IRInstruction::createAdd(actual_addr, array_addr, offset));
+        
+        curr_block->addInstruction(IRInstruction::createStore(actual_addr, value));
     }
 }
 void IRBuilder::visitIfStmt(IfStmt* node) {
@@ -270,14 +361,18 @@ void IRBuilder::visitIfStmt(IfStmt* node) {
     curr_function->addBasicBlock(then_block);
     curr_block = then_block;
     evaluateStmt(node->getThenBranch());
-    curr_block->addInstruction(IRInstruction::createJump(end_label)); 
+    if(curr_block->getInstructions().empty() || curr_block->getInstructions().back()->getOpcode() != IROpcode::JUMP) {
+        curr_block->addInstruction(IRInstruction::createJump(end_label));
+    }
 
     if(node->getElseBranch() != nullptr) {
         BasicBlock* else_block = new BasicBlock(else_label_str);
         curr_function->addBasicBlock(else_block);
         curr_block = else_block;
         evaluateStmt(node->getElseBranch());
-        curr_block->addInstruction(IRInstruction::createJump(end_label));
+        if(curr_block->getInstructions().empty() || curr_block->getInstructions().back()->getOpcode() != IROpcode::JUMP) {
+            curr_block->addInstruction(IRInstruction::createJump(end_label));
+        }
     } 
 
     BasicBlock* end_block = new BasicBlock(end_label_str);
@@ -371,19 +466,68 @@ void IRBuilder::visitLoopStmt(LoopStmt* node) {
     
     std::string prev_loop_end = current_loop_end_label;
     std::string prev_loop_start = current_loop_start_label;
+    std::string prev_loop_continue = current_loop_continue_label;
     current_loop_end_label = end_label_str;
     current_loop_start_label = loop_label_str;
+    auto prev_continue_infos = std::move(loop_continue_infos);
+    loop_continue_infos.clear();
+    
+
+    std::string inc_label_str;
+    if(node->getIncrement() != nullptr) {
+        inc_label_str = newLabel();
+        current_loop_continue_label = inc_label_str;
+    } else {
+        current_loop_continue_label = loop_label_str;
+    }
 
     in_loop_body = true;
     evaluateStmt(node->getBody());
     in_loop_body = prev_in_loop_body;
-    current_loop_end_label = prev_loop_end;
-    current_loop_start_label = prev_loop_start;
     
     if(node->getIncrement() != nullptr) {
+        BasicBlock* inc_block = new BasicBlock(inc_label_str);
+        curr_function->addBasicBlock(inc_block);
+        curr_block->addSuccessor(inc_block);
+        inc_block->addPredecessor(curr_block);
+        curr_block->addInstruction(IRInstruction::createJump(Operand::createLabel(inc_label_str)));
+
+        std::string body_end_label = curr_block->getLabel();
+        std::map<std::string, Operand*> body_end_values = local_vars;
+
+        curr_block = inc_block;
+
+        if(!loop_continue_infos.empty()) {
+            for (const auto& var_name : valid_vars) {
+                Operand* phi_dest = newVirtualReg(Token::S32);
+                IRInstruction* phi_instr = IRInstruction::createPhi(phi_dest, {});
+                phi_instr->addPhiOperand(body_end_values[var_name], body_end_label);
+                for(auto& ci : loop_continue_infos) {
+                    phi_instr->addPhiOperand(ci.second[var_name], ci.first->getLabel());
+                    ci.first->addSuccessor(inc_block);
+                    inc_block->addPredecessor(ci.first);
+                }
+                curr_block->addInstruction(phi_instr);
+                local_vars[var_name] = phi_dest;
+            }
+        }
+
         evaluateExpr(node->getIncrement());
+    } else if(!loop_continue_infos.empty()) {
+        for(const auto& var_name : valid_vars) {
+            for(auto& ci : loop_continue_infos) {
+                phi_instructions[var_name]->addPhiOperand(ci.second[var_name], ci.first->getLabel());
+                ci.first->addSuccessor(loop_block);
+                loop_block->addPredecessor(ci.first);
+            }
+        }
     }
     
+    current_loop_end_label = prev_loop_end;
+    current_loop_start_label = prev_loop_start;
+    current_loop_continue_label = prev_loop_continue;
+    loop_continue_infos = std::move(prev_continue_infos);
+
     std::string back_edge_label = curr_block->getLabel();
 
     for(const auto& var_name : valid_vars) {
@@ -416,7 +560,8 @@ void IRBuilder::visitBreakStmt(BreakStmt* node) {
     curr_block->addInstruction(IRInstruction::createJump(target));
 }
 void IRBuilder::visitContinueStmt(ContinueStmt* node) {
-    Operand* target = Operand::createLabel(current_loop_start_label);
+    loop_continue_infos.push_back({curr_block, local_vars});
+    Operand* target = Operand::createLabel(current_loop_continue_label);
     curr_block->addInstruction(IRInstruction::createJump(target));
 }
 void IRBuilder::visitSendStmt(SendStmt* node) {
@@ -494,7 +639,14 @@ Operand* IRBuilder::evaluateExpr(Expr* expr) {
         return visitInExpr(in);
     } else if(OutExpr* out = dynamic_cast<OutExpr*>(expr)) {
         return visitOutExpr(out);
-    } else {
+    } else if(ReferenceExpr* ref = dynamic_cast<ReferenceExpr*>(expr)) {
+        return visitReferenceExpr(ref);
+    } else if(DereferenceExpr* deref = dynamic_cast<DereferenceExpr*>(expr)) {
+        return visitDereferenceExpr(deref);
+    } else if(ArrayExpr* arr = dynamic_cast<ArrayExpr*>(expr)) {
+        return visitArrayExpr(arr);
+    }
+    else {
         return nullptr;
     }
 }

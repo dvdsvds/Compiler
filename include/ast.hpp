@@ -114,6 +114,35 @@ class OutExpr : public Expr {
         void accept(Visitor* v) override;
 };
 
+class ReferenceExpr : public Expr {
+    private:
+        std::string varName;
+    public:
+        ReferenceExpr(const std::string& varName, int32_t line, int32_t column); 
+        std::string getVarName() const;
+        void accept(Visitor* v) override;
+};
+
+class DereferenceExpr : public Expr {
+    private:
+        Expr* expr;
+    public:
+        DereferenceExpr(Expr* expr, int32_t line, int32_t column);
+        Expr* getExpr() const;
+        void accept(Visitor* v) override;
+};
+
+class ArrayExpr : public Expr {
+    private:
+        std::vector<Expr*> elements;
+        uint32_t array_size;
+    public:
+        ArrayExpr(const std::vector<Expr*>& elements, uint32_t array_size, int32_t line, int32_t column);
+        std::vector<Expr*> getElements() const;
+        uint32_t getArraySize() const;
+        void accept(Visitor* v) override;
+};
+
 class VarDeclStmt : public Stmt {
     private:
         Token type;

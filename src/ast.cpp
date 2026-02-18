@@ -55,6 +55,22 @@ OutExpr::OutExpr(const std::string& variableName, int32_t line, int32_t column)
 std::string OutExpr::getVariableName() const { return variableName; }
 void OutExpr::accept(Visitor* v) { v->visit(this); }
 
+ReferenceExpr::ReferenceExpr(const std::string& varName, int32_t line, int32_t column) 
+    : Expr(line, column), varName(varName) {}
+std::string ReferenceExpr::getVarName() const { return varName; }
+void ReferenceExpr::accept(Visitor* v) { v->visit(this); }
+
+DereferenceExpr::DereferenceExpr(Expr* expr, int32_t line, int32_t column) 
+    : Expr(line, column), expr(expr) {}
+Expr* DereferenceExpr::getExpr() const { return expr; }
+void DereferenceExpr::accept(Visitor* v) { v->visit(this); }
+
+ArrayExpr::ArrayExpr(const std::vector<Expr*>& elements, uint32_t array_size, int32_t line, int32_t column)
+    : Expr(line, column), elements(elements), array_size(array_size) {}
+std::vector<Expr*> ArrayExpr::getElements() const { return elements; }
+uint32_t ArrayExpr::getArraySize() const { return array_size; }
+void ArrayExpr::accept(Visitor* v) { v->visit(this); }
+
 VarDeclStmt::VarDeclStmt(Token type, const std::string& name, Expr* initializer, int32_t line, int32_t column) 
     : Stmt(line, column), type(type), name(name), initializer(initializer), address_taken(false) {}
 Token VarDeclStmt::getType() const { return type; }

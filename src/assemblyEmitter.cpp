@@ -72,9 +72,18 @@ void AssemblyEmitter::emitFunction(IRFunction* func) {
     allocateReg(func);
 
     output << "FUNCTION_" << func->getName() << ":" << std::endl;
-    emitPrologue(func);
-    for(const auto& blocks : func->getBasicBlocks()) {
-        emitBasicBlock(blocks);
+    auto blocks = func->getBasicBlocks();
+    for(int i = 0; i < blocks.size(); i++) {
+        if(i == 0) {
+            output << blocks[i]->getLabel() << ":" << std::endl;
+            emitPrologue(func);
+            for(const auto& instr : blocks[i]->getInstructions()) {
+                emitInstruction(instr);
+                current_instr_idx++;
+            }
+        } else {
+            emitBasicBlock(blocks[i]);
+        }
     }
     emitEpilogue(func);
 }
@@ -447,9 +456,15 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             break;
         }
         case IROpcode::STORE: {
-            int address = PhysicalReg(instr->getDest());
-            int value = PhysicalReg(instr->getSrc1());
-            output << "storew r" << value << ", " << "0(r" << address << ")" << std::endl;
+            int address = PhysicalReg(instr->getSrc1());
+            std::string value_str;
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc2()->constValue() << std::endl;
+                value_str = "r_temp";
+            } else {
+                value_str = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
+            }
+            output << "storew " << value_str << ", " << "0(r" << address << ")" << std::endl;
             break;
         }
         case IROpcode::ALLOCA: {
@@ -458,12 +473,13 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             output << "csrr r_temp, SP" << std::endl;
             if(size_op->isConstant()) {
                 int size = size_op->constValue();
-                output << "sub r_temp, r_temp, " << size << std::endl;
+                output << "mov r29, " << size << std::endl;;
+                output << "sub r_temp, r_temp, r29" << std::endl;
             } else {
                 int size_reg = PhysicalReg(size_op);
                 output << "sub r_temp, r_temp, r" << size_reg << std::endl;
             }
-            output << "csrw r_temp, SP" << std::endl;
+            output << "csrw SP, r_temp" << std::endl;
             output << "mov r" << rd << ", r_temp" << std::endl;
             break;
         }
@@ -528,6 +544,7 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             break;
         }
         case IROpcode::RETURN: {
+            output << "csrw SP, r30" << std::endl;
             if(instr->getSrc1() == nullptr) {
                 output << "ret" << std::endl;
             } else {
@@ -672,12 +689,38 @@ void AssemblyEmitter::allocateReg(IRFunction* func) {
         live_ranges.push_back({vreg.first, vreg.second, vreg_last_use[vreg.first]});
     }
 
+    int idx = 0;
+    std::map<std::string, int> block_start_idx;
+    std::map<std::string, int> block_end_idx;
+    for(const auto& block : func->getBasicBlocks()) {
+        block_start_idx[block->getLabel()] = idx;
+        idx += block->getInstructions().size();
+        block_end_idx[block->getLabel()] = idx - 1;
+    }
+
+    for(const auto& block : func->getBasicBlocks()) {
+        for(auto succ : block->getSuccessors()) {
+            if(block_start_idx.count(succ->getLabel()) && block_start_idx[succ->getLabel()] <= block_start_idx[block->getLabel()]) {
+                int loop_start = block_start_idx[succ->getLabel()];
+                int loop_end = block_end_idx[block->getLabel()];
+                for(auto& lr : live_ranges) {
+                    if(lr.start < loop_start && lr.end >= loop_start) {
+                        if(lr.end < loop_end) lr.end = loop_end;
+                    }
+                }
+            }
+        }
+    }
+
     std::sort(live_ranges.begin(), live_ranges.end(),
         [](const LiveRange& a, const LiveRange& b) {
             return a.start < b.start;
         });
 
-    std::set<int> available_regs = {1, 2, 12, 13, 14, 15, 24, 25, 26, 27};
+    std::set<int> available_regs = {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27};
+    for(int i = 0; i < params.size() && i < 8; i++) {
+        available_regs.erase(4 + i);
+    }
     std::map<int, int> vreg_to_preg;
     std::vector<LiveRange> active;
     for(const auto& lr : live_ranges) {
@@ -759,6 +802,7 @@ void AssemblyEmitter::eliminatePHI(IRFunction* func) {
     }
 }
 void AssemblyEmitter::emitPrologue(IRFunction* func) {
+    output << "csrr r30, SP" << std::endl;
     std::set<int> used_callee_saved = {};
     for(const auto& mapping : reg_assignment_info) {
         int vreg = mapping.first;

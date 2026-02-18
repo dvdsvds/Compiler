@@ -286,11 +286,34 @@ Expr* Parser::parseUnary() {
         op = Token::INC;
     } else if(match(Token::DEC)) {
         op = Token::DEC;
+    } else if(match(Token::BIT_AND)) {
+        std::string varName = tokens[curr_pos].value;
+        expect(Token::IDENTIFIER);
+        return new ReferenceExpr(varName, line, column);
+    } else if(match(Token::STAR)) {
+        Expr* operand = parseUnary();
+        return new DereferenceExpr(operand, line, column);
     } else {
         return parsePostfix();
     }
     Expr* operand = parseUnary();
     return new UnaryExpr(op, operand, line, column);
+}
+
+Expr* Parser::parseArray(uint32_t array_size) {
+    int32_t line = getLine();
+    int32_t column = getColumn();
+    expect(Token::LBRACE);
+    std::vector<Expr*> elements;
+    if(!check(Token::RBRACE)) {
+        while(true) {
+            elements.push_back(parseExpression());
+            if(!match(Token::COMMA)) break;
+        }
+    }
+    expect(Token::RBRACE);
+    uint32_t size = array_size > 0 ? array_size : elements.size();
+    return new ArrayExpr(elements, size, line, column);
 }
 
 Expr* Parser::parsePostfix() {
@@ -371,6 +394,12 @@ Stmt* Parser::parseStatement() {
         case Token::US8:
         case Token::US16:
         case Token::US32:
+        case Token::PS8:
+        case Token::PS16:
+        case Token::PS32:
+        case Token::PUS8:
+        case Token::PUS16:
+        case Token::PUS32:
         case Token::BOOL:
             return parseVardecl();
         case Token::IF:
@@ -397,10 +426,15 @@ Stmt* Parser::parseStatement() {
 }
 
 Stmt* Parser::parseVardecl() {
+    uint32_t array_size = 0;
     int32_t line = getLine();
     int32_t column = getColumn();
     Token type = advance();
     if(match(Token::LBRACKET)) {
+        if(check(Token::NUMBER)) {
+            array_size = std::stoi(tokens[curr_pos].value);
+            advance();
+        }
         expect(Token::RBRACKET);
         switch (type) {
             case Token::S8:
@@ -432,7 +466,13 @@ Stmt* Parser::parseVardecl() {
     expect(Token::IDENTIFIER);
     Expr* initializer = nullptr;
     if(match(Token::ASSIGN)) {
-        initializer = parseExpression();
+        if(check(Token::LBRACE)) {
+            initializer = parseArray(array_size);
+        } else if(array_size > 0) {
+            initializer = new ArrayExpr({}, array_size, line, column);
+        } else {
+            initializer = parseExpression();
+        }     
     }
     expect(Token::SEMICOLON);
     return new VarDeclStmt(type, variableName, initializer, line, column);

@@ -585,12 +585,9 @@ Stmt* Parser::parseSendStmt() {
     expect(Token::LPAREN);
     std::string variableName = tokens[curr_pos].value;
     expect(Token::IDENTIFIER);
-    expect(Token::RARROW);
-    std::string functionName = tokens[curr_pos].value;
-    expect(Token::IDENTIFIER);
     expect(Token::RPAREN);
     expect(Token::SEMICOLON);
-    return new SendStmt(variableName, functionName, line, column);
+    return new SendStmt(variableName, "", line, column);
 }
 
 Stmt* Parser::parseRecvStmt() {
@@ -598,14 +595,11 @@ Stmt* Parser::parseRecvStmt() {
     int32_t column = getColumn();
     expect(Token::RECV);
     expect(Token::LPAREN);
-    std::string srcFunction = tokens[curr_pos].value;
-    expect(Token::IDENTIFIER);
-    expect(Token::RARROW);
     std::string variableName = tokens[curr_pos].value;
     expect(Token::IDENTIFIER);
     expect(Token::RPAREN);
     expect(Token::SEMICOLON);
-    return new RecvStmt(variableName, srcFunction, line, column);
+    return new RecvStmt(variableName, "", line, column);
 }
 
 Stmt* Parser::parseExprStmt() {

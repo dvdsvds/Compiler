@@ -598,7 +598,7 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
         case IROpcode::NEG: {
             int rd = PhysicalReg(instr->getDest());
             std::string rs1 = getOperandReg(instr->getSrc1());
-            output << "neg r" << rd << ", " << rs1 << std::endl;
+            output << "sub r" << rd << ", r0, " << rs1 << std::endl;
             break;
         }
         case IROpcode::NOT: {

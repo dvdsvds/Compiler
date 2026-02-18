@@ -621,24 +621,13 @@ void SemanticAnalyzer::visit(SendStmt* node) {
 };
 
 void SemanticAnalyzer::visit(RecvStmt* node) { 
-    Symbol* var_name = track_symbol->lookup(node->getVariableName()); 
-    if(var_name == nullptr) {
-        add_error({"Variable '" + node->getVariableName() + "' is not declared", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
-        return;
-    }
-
-    node->setVarType(var_name->get_type().type);
-
-    Symbol* srcFunc = track_symbol->lookup(node->getSrcFunction());
-    if(srcFunc == nullptr || !srcFunc->is_func()) {
-        add_error({"Function '" + node->getSrcFunction() + "' is not declared", errorType::FUNCTION_UNDECLARED, node->get_line(), node->get_column()});
-        return;
-    }
-
+    TokenData varType = {Token::S32, "", node->get_line(), node->get_column()};
+    track_symbol->insert(node->getVariableName(), {node->getVariableName(), varType, track_symbol->curr_scope(), false, false});
+    node->setVarType(Token::S32);
     function_recvs[curr_function_name].push_back(RecvInfo{
         node->getVariableName(),
-        node->getSrcFunction(),
-        var_name->get_type().type,
+        "",
+        Token::S32,
         node->get_line(),
         node->get_column()
     });
@@ -706,16 +695,27 @@ void SemanticAnalyzer::visit(Program* node) {
         }
     }
 
-    for(const auto& send_info : all_sends) {
-        Symbol* targetFunc = track_symbol->lookup(send_info.target_function);
-        if(targetFunc == nullptr || !targetFunc->is_func()) {
-            add_error({"Send target function '" + send_info.target_function + "' is not declared", errorType::FUNCTION_UNDECLARED, send_info.line, send_info.column});
-            continue;
-        }
+    std::set<std::string> sent_vars;
+    std::set<std::string> recv_vars;
 
-        if(function_recvs.find(send_info.target_function) == function_recvs.end() || 
-        function_recvs[send_info.target_function].empty()) {
-            add_error({"No recv in target function '" + send_info.target_function + "'", errorType::NO_RECV_TARGET, send_info.line, send_info.column});
+    for(const auto& send_info : all_sends) {
+        sent_vars.insert(send_info.var_name);
+    }
+    for(const auto& kv : function_recvs) {
+        for(const auto& recv : kv.second) {
+            recv_vars.insert(recv.var_name);
+        }
+    }
+    for(const auto& send_info : all_sends) {
+        if(recv_vars.find(send_info.var_name) == recv_vars.end()) {
+            add_error({"send('" + send_info.var_name + "') has no matching recv", errorType::NO_RECV_TARGET, send_info.line, send_info.column}); 
+        }
+    }
+    for(const auto& kv : function_recvs) {
+        for(const auto& recv : kv.second) {
+            if(sent_vars.find(recv.var_name) == sent_vars.end()) {
+                add_error({"recv('" + recv.var_name + "') has no matching send", errorType::NO_RECV_TARGET, recv.line, recv.column}); 
+            }
         }
     }
 }

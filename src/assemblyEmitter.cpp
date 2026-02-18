@@ -545,6 +545,11 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
         }
         case IROpcode::RETURN: {
             output << "csrw SP, r30" << std::endl;
+            output << "csrr r_temp, SP" << std::endl;
+            output << "loadw r30, 0(r_temp)" << std::endl;
+            output << "mov r29, 4" << std::endl;
+            output << "add r_temp, r_temp, r29" << std::endl;
+            output << "csrw SP, r_temp" << std::endl;
             if(instr->getSrc1() == nullptr) {
                 output << "ret" << std::endl;
             } else {
@@ -802,6 +807,11 @@ void AssemblyEmitter::eliminatePHI(IRFunction* func) {
     }
 }
 void AssemblyEmitter::emitPrologue(IRFunction* func) {
+    output << "csrr r_temp, SP" << std::endl;
+    output << "storew r30, -4(r_temp)" << std::endl;
+    output << "mov r29, 4" << std::endl;
+    output << "sub r_temp, r_temp, r29" << std::endl;
+    output << "csrw SP, r_temp" << std::endl;
     output << "csrr r30, SP" << std::endl;
     std::set<int> used_callee_saved = {};
     for(const auto& mapping : reg_assignment_info) {

@@ -166,17 +166,26 @@ void SemanticAnalyzer::visit(BinaryExpr* node) {
         case Token::XOR_EQ:
         case Token::SHL_EQ:
         case Token::SHR_EQ:
-        case Token::EQ:
-        case Token::NE:
             if(leftType == rightType) {
-                node->setType(Token::BOOL);
+                node->setType(leftType);
             } else {
                 add_error({"Type mismatch in equality: operand types must match, got " + tokenToString(leftType) + " and " + tokenToString(rightType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                 node->setType(Token::INVALID);
                 return;
             }
             break;
-        
+
+        case Token::EQ:
+        case Token::NE:
+            if(leftType == rightType) {
+                node->setType(Token::BOOL);
+            } else {
+                add_error({"Type mismatch in equality: operand types must match, got " + tokenToString(leftType) + " and " + tokenToString(rightType),  errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+                node->setType(Token::INVALID);
+                return;
+            }
+            break;
+
         case Token::AND:
         case Token::OR:
             if((leftType == Token::BOOL) && (rightType == Token::BOOL)) {
@@ -409,13 +418,25 @@ void SemanticAnalyzer::visit(OutExpr* node) {
 }
 
 void SemanticAnalyzer::visit(ReferenceExpr* node) {
-    Symbol* sym = track_symbol->lookup(node->getVarName());
-    if(!sym) {
-        add_error({"Variable '" + node->getVarName() + "' is not declared", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
+    Expr* inner = node->getExpr();
+    inner->accept(this);
+
+    Token base_type = Token::S32;
+
+    if(VariableExpr* varExpr = dynamic_cast<VariableExpr*>(inner)) {
+        Symbol* sym = track_symbol->lookup(varExpr->getName());
+        if(!sym) {
+            add_error({"Variable '" + varExpr->getName() + "' is not declared", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
+            return;
+        }
+        base_type = sym->get_type().type;
+    } else if(ArrayAccessExpr* arrAccess = dynamic_cast<ArrayAccessExpr*>(inner)) {
+        base_type = arrAccess->getType();
+    } else {
+        add_error({"Cannot take address of this expression", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
         return;
     }
 
-    Token base_type = sym->get_type().type;
     Token ptr_type = Token::PS32;
     switch(base_type) {
         case Token::S8: ptr_type = Token::PS8; break;

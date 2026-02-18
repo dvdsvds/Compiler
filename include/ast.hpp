@@ -116,10 +116,10 @@ class OutExpr : public Expr {
 
 class ReferenceExpr : public Expr {
     private:
-        std::string varName;
+        Expr* expr;
     public:
-        ReferenceExpr(const std::string& varName, int32_t line, int32_t column); 
-        std::string getVarName() const;
+        ReferenceExpr(Expr* expr, int32_t line, int32_t column); 
+        Expr* getExpr() const;
         void accept(Visitor* v) override;
 };
 

@@ -55,9 +55,9 @@ OutExpr::OutExpr(const std::string& variableName, int32_t line, int32_t column)
 std::string OutExpr::getVariableName() const { return variableName; }
 void OutExpr::accept(Visitor* v) { v->visit(this); }
 
-ReferenceExpr::ReferenceExpr(const std::string& varName, int32_t line, int32_t column) 
-    : Expr(line, column), varName(varName) {}
-std::string ReferenceExpr::getVarName() const { return varName; }
+ReferenceExpr::ReferenceExpr(Expr* expr, int32_t line, int32_t column) 
+    : Expr(line, column), expr(expr) {}
+Expr* ReferenceExpr::getExpr() const { return expr; }
 void ReferenceExpr::accept(Visitor* v) { v->visit(this); }
 
 DereferenceExpr::DereferenceExpr(Expr* expr, int32_t line, int32_t column) 

@@ -287,9 +287,8 @@ Expr* Parser::parseUnary() {
     } else if(match(Token::DEC)) {
         op = Token::DEC;
     } else if(match(Token::BIT_AND)) {
-        std::string varName = tokens[curr_pos].value;
-        expect(Token::IDENTIFIER);
-        return new ReferenceExpr(varName, line, column);
+        Expr* operand = parseUnary();
+        return new ReferenceExpr(operand, line, column);
     } else if(match(Token::STAR)) {
         Expr* operand = parseUnary();
         return new DereferenceExpr(operand, line, column);

@@ -205,22 +205,51 @@ Operand* IRBuilder::visitOutExpr(OutExpr* node) {
     return nullptr;
 }
 Operand* IRBuilder::visitReferenceExpr(ReferenceExpr* node) {
-    std::string name = node->getVarName();
-    if(!var_address_taken[name]) {
-        Operand* old_var = local_vars[name];
-        if(old_var->isConstant()) {
-            Operand* temp = newVirtualReg(Token::S32);
-            curr_block->addInstruction(IRInstruction::createCopy(temp, old_var));
-            old_var = temp;
+    Expr* inner = node->getExpr();
+
+    if(VariableExpr* varExpr = dynamic_cast<VariableExpr*>(inner)) {
+        std::string name = varExpr->getName();
+        if(!var_address_taken[name]) {
+            Operand* old_var = local_vars[name];
+            if(old_var->isConstant()) {
+                Operand* temp = newVirtualReg(Token::S32);
+                curr_block->addInstruction(IRInstruction::createCopy(temp, old_var));
+                old_var = temp;
+            }
+            Operand* addr = newVirtualReg(Token::PS32);
+            Operand* size = Operand::createConstant(4, Token::S32);
+            curr_block->addInstruction(IRInstruction::createAlloca(addr, size));
+            curr_block->addInstruction(IRInstruction::createStore(addr, old_var));
+            local_vars[name] = addr;
+            var_address_taken[name] = true;
         }
-        Operand* addr = newVirtualReg(Token::PS32);
-        Operand* size = Operand::createConstant(4, Token::S32);
-        curr_block->addInstruction(IRInstruction::createAlloca(addr, size));
-        curr_block->addInstruction(IRInstruction::createStore(addr, old_var));
-        local_vars[name] = addr;
-        var_address_taken[name] = true;
+        return local_vars[name];
+    } else if(ArrayAccessExpr* arrAccess = dynamic_cast<ArrayAccessExpr*>(inner)) {
+        Operand* array_addr = evaluateExpr(arrAccess->getArrayName());
+        Operand* index = evaluateExpr(arrAccess->getIndex());
+
+        int size = 4;
+        switch(arrAccess->getType()) {
+            case Token::S8: size = 1; break;
+            case Token::S16: size = 2; break;
+            case Token::S32: size = 4; break;
+            case Token::US8: size = 1; break;
+            case Token::US16: size = 2; break;
+            case Token::US32: size = 4; break;
+            case Token::BOOL: size = 1; break;
+            default: break;
+        }
+        Operand* element_size = Operand::createConstant(size, arrAccess->getType());
+        Operand* offset = newVirtualReg(Token::S32);
+        curr_block->addInstruction(IRInstruction::createMul(offset, index, element_size));
+
+        Operand* actual_addr = newVirtualReg(Token::PS32);
+        curr_block->addInstruction(IRInstruction::createAdd(actual_addr, array_addr, offset));
+
+        return actual_addr;  // LOAD 없이 주소만 반환
     }
-    return local_vars[name];
+
+    return nullptr;
 }
 Operand* IRBuilder::visitDereferenceExpr(DereferenceExpr* node) {
         Operand* addr = evaluateExpr(node->getExpr());

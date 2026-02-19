@@ -333,6 +333,20 @@ void IRBuilder::visitVarDeclStmt(VarDeclStmt* node) {
                     curr_block->addInstruction(IRInstruction::createAdd(member_addr, addr, offset));
                     curr_block->addInstruction(IRInstruction::createStore(member_addr, val));
                 }
+            } else if(CallExpr* call = dynamic_cast<CallExpr*>(node->getInitializer())) {
+                std::vector<Operand*> call_args;
+                for(const auto& arg : call->getArguments()) {
+                    if(VariableExpr* varExpr = dynamic_cast<VariableExpr*>(arg)) {
+                        if(struct_var_types.count(varExpr->getName())) {
+                            call_args.push_back(local_vars[varExpr->getName()]);
+                            continue;
+                        }
+                    }
+                    call_args.push_back(evaluateExpr(arg));
+                }
+                call_args.push_back(addr);
+                Operand* ignore = newVirtualReg(Token::S32);
+                curr_block->addInstruction(IRInstruction::createCall(ignore, call->getFunctionName(), call_args));
             }
         } else {
             for(uint32_t i = 0; i < num_members; i++) {
@@ -646,13 +660,30 @@ void IRBuilder::visitLoopStmt(LoopStmt* node) {
     }
 }
 void IRBuilder::visitReturnStmt(ReturnStmt* node) {
+    if(!curr_return_struct_name.empty() && node->getReturnValue() != nullptr) {
+        if(VariableExpr* varExpr = dynamic_cast<VariableExpr*>(node->getReturnValue())) {
+            Operand* src_base = local_vars[varExpr->getName()];
+            Operand* dst_base = local_vars["_ret_ptr"];
+            StructDecl* decl = struct_defs[curr_return_struct_name];
+            for(int i = 0; i < (int)decl->getMembers().size(); i++) {
+                Operand* offset = Operand::createConstant(i * 4, Token::S32);
+                Operand* src_addr = newVirtualReg(Token::S32);
+                curr_block->addInstruction(IRInstruction::createAdd(src_addr, src_base, offset));
+                Operand* val = newVirtualReg(Token::S32);
+                curr_block->addInstruction(IRInstruction::createLoad(val, src_addr));
+                Operand* dst_addr = newVirtualReg(Token::S32);
+                curr_block->addInstruction(IRInstruction::createAdd(dst_addr, dst_base, offset));
+                curr_block->addInstruction(IRInstruction::createStore(dst_addr, val));
+            }
+        }
+        curr_block->addInstruction(IRInstruction::createReturn(nullptr));
+        return;
+    }
     Operand* return_value = nullptr;
     if(node->getReturnValue() != nullptr) {
         return_value = evaluateExpr(node->getReturnValue());
     }
-
-    IRInstruction* return_instr = IRInstruction::createReturn(return_value);
-    curr_block->addInstruction(return_instr);
+    curr_block->addInstruction(IRInstruction::createReturn(return_value));
 }
 void IRBuilder::visitBreakStmt(BreakStmt* node) {
     Operand* target = Operand::createLabel(current_loop_end_label);
@@ -738,6 +769,14 @@ void IRBuilder::visitFunctionDecl(FunctionDecl* node) {
             var_address_taken[parameter.name] = true;
             struct_var_types[parameter.name] = parameter.structName;
         }
+    }
+
+    curr_return_struct_name = "";
+    if(node->getReturnType() == Token::STRUCT_T) {
+        Operand* ret_ptr = newVirtualReg(Token::S32);
+        params.push_back(ret_ptr);
+        local_vars["_ret_ptr"] = ret_ptr;
+        curr_return_struct_name = node->getReturnStructName();
     }
 
     IRFunction* func = new IRFunction(node->getName(), params, node->getReturnType());

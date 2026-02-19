@@ -142,9 +142,10 @@ PrintStmt::PrintStmt(Expr* expression, int32_t line, int32_t column)
 Expr* PrintStmt::getExpression() const { return expression; }
 void PrintStmt::accept(Visitor* v) { v->visit(this); }
 
-FunctionDecl::FunctionDecl(const std::string& name, const std::vector<Parameter>& parameters, Token returnType, Stmt* body, int32_t line, int32_t column) 
-    : ASTNode(line, column), name(name), parameters(parameters), returnType(returnType), body(body) {}
+FunctionDecl::FunctionDecl(const std::string& name, const std::vector<Parameter>& parameters, Token returnType, const std::string& returnStructName, Stmt* body, int32_t line, int32_t column) 
+    : ASTNode(line, column), name(name), parameters(parameters), returnType(returnType), returnStructName(returnStructName), body(body) {}
 std::string FunctionDecl::getName() const { return name; }
+std::string FunctionDecl::getReturnStructName() const { return returnStructName; }
 std::vector<Parameter> FunctionDecl::getParameters() const { return parameters; }
 Token FunctionDecl::getReturnType() const { return returnType; }
 Stmt* FunctionDecl::getBody() const { return body; }

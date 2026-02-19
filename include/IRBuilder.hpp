@@ -33,6 +33,7 @@ class IRBuilder {
 
         std::map<std::string, StructDecl*> struct_defs;
         std::map<std::string, std::string> struct_var_types;
+        std::string curr_return_struct_name;
 
     public:
         IRBuilder(IRModule* module, SymbolTable* track_symbol);

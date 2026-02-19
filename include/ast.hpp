@@ -285,10 +285,12 @@ class FunctionDecl : public ASTNode {
         std::string name;
         std::vector<Parameter> parameters;
         Token returnType;
+        std::string returnStructName;
         Stmt* body;
     public:
-        FunctionDecl(const std::string& name, const std::vector<Parameter>& parameters, Token returnType, Stmt* body, int32_t line, int32_t column);
+        FunctionDecl(const std::string& name, const std::vector<Parameter>& parameters, Token returnType, const std::string& returnStructName, Stmt* body, int32_t line, int32_t column);
         std::string getName() const;
+        std::string getReturnStructName() const;
         std::vector<Parameter> getParameters() const;
         Token getReturnType() const;
         Stmt* getBody() const;

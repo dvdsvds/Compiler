@@ -709,7 +709,7 @@ void SemanticAnalyzer::visit(PrintStmt* node) {
 void SemanticAnalyzer::visit(FunctionDecl* node) { 
     track_symbol->enter_scope();
     
-    enter_function({node->getReturnType(), "", node->get_line(), node->get_column()}, node->getName());
+    enter_function({node->getReturnType(), node->getReturnStructName(), node->get_line(), node->get_column()}, node->getName());
     
     for(const auto& param : node->getParameters()) {
         if(track_symbol->lookup_current_scope(param.name) != nullptr) {
@@ -748,7 +748,7 @@ void SemanticAnalyzer::visit(Program* node) {
             paramType.push_back(TokenData{params.type, params.structName, node->get_line(), node->get_column()});
         }
 
-        TokenData returnType = TokenData{func->getReturnType(), "", node->get_line(), node->get_column()};
+        TokenData returnType = TokenData{func->getReturnType(), func->getReturnStructName(), node->get_line(), node->get_column()};
         track_symbol->insert(func->getName(), {func->getName(), returnType, paramType, track_symbol->curr_scope(), false});
         valid_functions.insert(func->getName());
     }

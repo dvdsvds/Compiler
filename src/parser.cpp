@@ -766,6 +766,14 @@ FunctionDecl* Parser::parseFunction() {
     expect(Token::RPAREN);
     expect(Token::RARROW);
     Token returnType = advance();
+    std::string retStructName = "";
+    if(returnType == Token::IDENTIFIER) {
+        std::string typeName = tokens[curr_pos - 1].value;
+        if(structName.count(typeName)) {
+            retStructName = typeName;
+            returnType = Token::STRUCT_T;
+        }
+    }
 
     if(match(Token::LBRACKET)) {
         expect(Token::RBRACKET);
@@ -797,7 +805,7 @@ FunctionDecl* Parser::parseFunction() {
         }
     
     Stmt* body = parseBlock();
-    return new FunctionDecl(name, parameters, returnType, body, line, column);
+    return new FunctionDecl(name, parameters, returnType, retStructName, body, line, column);
 }
 
 StructDecl* Parser::parseStruct() {
@@ -835,7 +843,11 @@ Stmt* Parser::parseStructVardecl() {
     expect(Token::IDENTIFIER);
     Expr* init = nullptr;
     if(match(Token::ASSIGN)) {
-        init = parseStructLiteral();
+        if(check(Token::LBRACE)) {
+            init = parseStructLiteral();
+        } else {
+            init = parseExpression();
+        }
     }
     expect(Token::SEMICOLON);
     return new VarDeclStmt(Token::STRUCT_T, varName, structName, init, line, column);

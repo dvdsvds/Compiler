@@ -162,6 +162,17 @@ Operand* IRBuilder::visitUnaryExpr(UnaryExpr* node) {
 Operand* IRBuilder::visitCallExpr(CallExpr* node) {
     std::string func_name = node->getFunctionName();
 
+    if(local_vars.count(func_name)) {
+        Operand* fp = local_vars[func_name];
+        std::vector<Operand*> call_args;
+        for(const auto& arg : node->getArguments()) {
+            call_args.push_back(evaluateExpr(arg));
+        }
+        Operand* dest = newVirtualReg(node->getType());
+        curr_block->addInstruction(IRInstruction::createCallPtr(dest, fp, call_args));
+        return dest;
+    }
+
     std::vector<Operand*> call_args;
     for(const auto& args : node->getArguments()) {
         if(VariableExpr* varExpr = dynamic_cast<VariableExpr*>(args)) {
@@ -229,6 +240,9 @@ Operand* IRBuilder::visitReferenceExpr(ReferenceExpr* node) {
     Expr* inner = node->getExpr();
 
     if(VariableExpr* varExpr = dynamic_cast<VariableExpr*>(inner)) {
+        if(!local_vars.count(varExpr->getName()) && !global_var_names.count(varExpr->getName())) {
+            return Operand::createGlobal(varExpr->getName(), Token::FUNC_PTR);
+        }
         std::string name = varExpr->getName();
         if(!var_address_taken[name]) {
             Operand* old_var = local_vars[name];
@@ -386,6 +400,18 @@ void IRBuilder::visitVarDeclStmt(VarDeclStmt* node) {
         local_vars[fname] = init_value;
         var_address_taken[fname] = false;
         struct_var_types[fname] = name;
+        return;
+    }
+
+    if(func_type == Token::FUNC_PTR) {
+        Operand* init_value;
+        if(node->getInitializer() != nullptr) {
+            init_value = evaluateExpr(node->getInitializer());
+        } else {
+            init_value = Operand::createConstant(0, Token::S32);
+        }
+        local_vars[fname] = init_value;
+        var_address_taken[fname] = false;
         return;
     }
 
@@ -804,6 +830,10 @@ void IRBuilder::visitFunctionDecl(FunctionDecl* node) {
         local_vars[parameter.name] = p_type;
         if(parameter.type == Token::STRUCT_T) {
             var_address_taken[parameter.name] = true;
+            struct_var_types[parameter.name] = parameter.structName;
+        }
+        if(parameter.type == Token::PSTRUCT_T) {
+            var_address_taken[parameter.name] = false;
             struct_var_types[parameter.name] = parameter.structName;
         }
     }

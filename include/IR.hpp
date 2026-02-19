@@ -9,7 +9,7 @@ enum class IROpcode {
     EQ, NE, LT, LE, GT, GE,
     LOAD, STORE, ALLOCA,
     LABEL, JUMP, BRANCH,
-    CALL, RETURN,
+    CALL, CALL_PTR, RETURN,
     COPY, PHI,
     SEND, RECV,
     OUT, IN,
@@ -103,6 +103,7 @@ class IRInstruction {
         static IRInstruction* createOut(Operand* value);
         static IRInstruction* createIn(Operand* dest);
         static IRInstruction* createCall(Operand* dest, const std::string& func_name, const std::vector<Operand*>& args);
+        static IRInstruction* createCallPtr(Operand* dest, Operand* func_ptr, const std::vector<Operand*>& args);
         static IRInstruction* createPhi(Operand* dest, const std::vector<std::pair<Operand*, std::string>>& phi_operands);
         static IRInstruction* createBranch(Operand* condition, Operand* true_label);
         static IRInstruction* createPrint(Operand* value);

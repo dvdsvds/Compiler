@@ -21,6 +21,7 @@ Lexer::Lexer(const std::string& src) : source(src), pos(0), line(1), column(0) {
     keywords["recv"] = Token::RECV;
     keywords["null"] = Token::NULL_KW;
     keywords["as"] = Token::AS;
+    keywords["func"] = Token::FUNC_PTR;
     keywords["s8"] = Token::S8;
     keywords["s16"] = Token::S16;
     keywords["s32"] = Token::S32;

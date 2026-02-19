@@ -459,6 +459,8 @@ Stmt* Parser::parseStatement() {
             return parseBreakStmt();
         case Token::CONTINUE:
             return parseContinueStmt();
+        case Token::FUNC_PTR:
+            return parseVardecl();
         default:
             if(peek() == Token::IDENTIFIER && structName.count(tokens[curr_pos].value) && curr_pos + 1 < tokens.size() && (tokens[curr_pos + 1].type == Token::IDENTIFIER || tokens[curr_pos + 1].type == Token::LBRACKET || tokens[curr_pos + 1].type == Token::STAR)) {
                 return parseStructVardecl();
@@ -726,6 +728,9 @@ FunctionDecl* Parser::parseFunction() {
                 if(structName.count(typeName)) {
                     paramStructName = typeName;
                     parameterType = Token::STRUCT_T;
+                    if(match(Token::STAR)) {
+                        parameterType = Token::PSTRUCT_T;
+                    }
                 }
             }
             if(match(Token::LBRACKET)) {

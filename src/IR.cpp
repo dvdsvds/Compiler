@@ -150,6 +150,9 @@ IRInstruction* IRInstruction::createIn(Operand* dest) {
 IRInstruction* IRInstruction::createCall(Operand* dest, const std::string& func_name, const std::vector<Operand*>& args) {
     return new IRInstruction(IROpcode::CALL, dest, nullptr, nullptr, new std::string(func_name), args, {});
 }
+IRInstruction* IRInstruction::createCallPtr(Operand* dest, Operand* func_ptr, const std::vector<Operand*>& args) {
+    return new IRInstruction(IROpcode::CALL_PTR, dest, func_ptr, nullptr, nullptr, args, {});
+}
 IRInstruction* IRInstruction::createPhi(Operand* dest, const std::vector<std::pair<Operand*, std::string>>& phi_operands) {
     return new IRInstruction(IROpcode::PHI, dest, nullptr, nullptr, nullptr, {}, phi_operands);
 }

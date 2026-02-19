@@ -309,9 +309,13 @@ void SemanticAnalyzer::visit(CallExpr* node) {
     }
 
     Symbol* functionName = track_symbol->lookup(node->getFunctionName());
-    if(functionName == nullptr || !(functionName->is_func())) {
+    if(functionName == nullptr || (!(functionName->is_func()) && functionName->get_type().type != Token::FUNC_PTR)) {
         add_error({"Function '" + node->getFunctionName() + "' is not declared", errorType::FUNCTION_UNDECLARED, node->get_line(), node->get_column()});
         node->setType(Token::INVALID);
+        return;
+    }
+    if(functionName->get_type().type == Token::FUNC_PTR) {
+        node->setType(Token::S32);
         return;
     }
 
@@ -407,6 +411,12 @@ void SemanticAnalyzer::visit(OutExpr* node) {
 
 void SemanticAnalyzer::visit(ReferenceExpr* node) {
     Expr* inner = node->getExpr();
+    if(VariableExpr* varExpr = dynamic_cast<VariableExpr*>(inner)) {
+        if(function_names.count(varExpr->getName())) {
+            node->setType(Token::FUNC_PTR);
+            return;
+        }
+    }
     inner->accept(this);
 
     Token base_type = Token::S32;
@@ -433,6 +443,7 @@ void SemanticAnalyzer::visit(ReferenceExpr* node) {
         case Token::US8: ptr_type = Token::PUS8; break;
         case Token::US16: ptr_type = Token::PUS16; break;
         case Token::US32: ptr_type = Token::PUS32; break;
+        case Token::STRUCT_T: ptr_type = Token::PSTRUCT_T; break;
         default: break;
     }
     node->setType(ptr_type);
@@ -502,6 +513,15 @@ void SemanticAnalyzer::visit(VarDeclStmt* node) {
             node->getInitializer()->accept(this);
         }
         TokenData varType = {Token::PSTRUCT_T, sname, node->get_line(), node->get_column()};
+        track_symbol->insert(node->getName(), {node->getName(), varType, track_symbol->curr_scope(), false, false});
+        return;
+    }
+
+    if(node->getType() == Token::FUNC_PTR) {
+        if(node->getInitializer() != nullptr) {
+            node->getInitializer()->accept(this);
+        }
+        TokenData varType = {Token::FUNC_PTR, "", node->get_line(), node->get_column()};
         track_symbol->insert(node->getName(), {node->getName(), varType, track_symbol->curr_scope(), false, false});
         return;
     }
@@ -759,6 +779,7 @@ void SemanticAnalyzer::visit(Program* node) {
         TokenData returnType = TokenData{func->getReturnType(), func->getReturnStructName(), node->get_line(), node->get_column()};
         track_symbol->insert(func->getName(), {func->getName(), returnType, paramType, track_symbol->curr_scope(), false});
         valid_functions.insert(func->getName());
+        function_names.insert(func->getName());
     }
 
     for(const auto& func : node->getFunctions()) {

@@ -2,6 +2,7 @@
 #include "symbolTable.hpp"
 #include "visitor.hpp"
 #include "ast.hpp"
+#include <set>
 
 class SemanticAnalyzer : public Visitor {
     public:
@@ -54,6 +55,7 @@ class SemanticAnalyzer : public Visitor {
         std::map<std::string, StructDecl*> struct_defs;
         std::string curr_function_name;
         bool in_loop = false;
+        std::set<std::string> function_names;
 
     public:
         SemanticAnalyzer(SymbolTable* track_symbol);

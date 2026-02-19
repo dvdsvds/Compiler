@@ -102,6 +102,9 @@ std::string AssemblyEmitter::getOperandReg(Operand* operand) {
     } else if(operand->isVirtualReg()) {
         int reg = PhysicalReg(operand);
         return "r" + std::to_string(reg);
+    } else if(operand->isGlobal()) {
+        output << "mov r_temp, " << *operand->globalName() << std::endl;
+        return "r_temp";
     }
     throw std::runtime_error("Unknown operand type");
 }
@@ -545,6 +548,38 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
                 output << "add r_temp, r_temp, " << stack_size << std::endl;
                 output << "csrw r_temp, SP" << std::endl;
             }
+
+            std::vector<int> regs_vec(regs_to_save.begin(), regs_to_save.end());
+            for(int i = regs_vec.size() - 1; i >= 0; i--) {
+                output << "pop r" << regs_vec[i] << std::endl;
+            }
+
+            if(instr->getDest() != nullptr) {
+                int rd = PhysicalReg(instr->getDest());
+                output << "mov r" << rd << ", r3" << std::endl;
+            }
+            break;
+        }
+        case IROpcode::CALL_PTR: {
+            Operand* fp = instr->getSrc1();
+            std::vector<Operand*> args = instr->getArgs();
+
+            std::set<int> regs_to_save = getCallerSavedToPreserve(current_instr_idx);
+            for(int reg : regs_to_save) {
+                output << "push r" << reg << std::endl;
+            }
+
+            int count = std::min(8, static_cast<int>(args.size()));
+            for(int i = 0; i < count; i++) {
+                std::string arg_reg = getOperandReg(args[i]);
+                output << "push " << arg_reg << std::endl;
+            }
+            for(int i = count - 1; i >= 0; i--) {
+                output << "pop r" << 4 + i << std::endl;
+            }
+
+            std::string fp_reg = getOperandReg(fp);
+            output << "callr " << fp_reg << std::endl;
 
             std::vector<int> regs_vec(regs_to_save.begin(), regs_to_save.end());
             for(int i = regs_vec.size() - 1; i >= 0; i--) {

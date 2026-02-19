@@ -375,6 +375,20 @@ void IRBuilder::visitVarDeclStmt(VarDeclStmt* node) {
         return;
     }
 
+    if(func_type == Token::PSTRUCT_T) {
+        std::string name = node->getStructName();
+        Operand* init_value;
+        if(node->getInitializer() != nullptr) {
+            init_value = evaluateExpr(node->getInitializer());
+        } else {
+            init_value = Operand::createConstant(0, Token::S32);
+        }
+        local_vars[fname] = init_value;
+        var_address_taken[fname] = false;
+        struct_var_types[fname] = name;
+        return;
+    }
+
     Operand* init_value;
     if(node->getInitializer() != nullptr) {
         init_value = evaluateExpr(node->getInitializer());

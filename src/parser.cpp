@@ -21,7 +21,7 @@ Program* Parser::parse() {
     while(!isAtEnd()) {
         if(check(Token::STRUCT) && curr_pos + 2 < tokens.size() && tokens[curr_pos + 2].type == Token::LBRACE) {
             structs.push_back(parseStruct());
-        } else if(peek() == Token::IDENTIFIER && structName.count(tokens[curr_pos].value) && curr_pos + 1 < tokens.size() && (tokens[curr_pos + 1].type == Token::IDENTIFIER || tokens[curr_pos + 1].type == Token::LBRACKET)) {
+        } else if(peek() == Token::IDENTIFIER && structName.count(tokens[curr_pos].value) && curr_pos + 1 < tokens.size() && (tokens[curr_pos + 1].type == Token::IDENTIFIER || tokens[curr_pos + 1].type == Token::LBRACKET || tokens[curr_pos + 1].type == Token::STAR)) {
             globals.push_back(static_cast<VarDeclStmt*>(parseStructVardecl()));
         } else if(isGlobalStructVar()) {
             globals.push_back(static_cast<VarDeclStmt*>(parseStructVardecl()));
@@ -378,7 +378,12 @@ Expr* Parser::parsePostfix() {
             std::string memberName = tokens[curr_pos].value;
             expect(Token::IDENTIFIER);
             left = new MemberAccessExpr(left, memberName, line, column);
-        } else {
+        } else if(match(Token::RARROW)) {
+            std::string memberName = tokens[curr_pos].value;
+            expect(Token::IDENTIFIER);
+            left = new MemberAccessExpr(left, memberName, line, column, true);
+        } 
+        else {
             break;
         }
     }
@@ -455,7 +460,7 @@ Stmt* Parser::parseStatement() {
         case Token::CONTINUE:
             return parseContinueStmt();
         default:
-            if(peek() == Token::IDENTIFIER && structName.count(tokens[curr_pos].value) && curr_pos + 1 < tokens.size() && (tokens[curr_pos + 1].type == Token::IDENTIFIER || tokens[curr_pos + 1].type == Token::LBRACKET)) {
+            if(peek() == Token::IDENTIFIER && structName.count(tokens[curr_pos].value) && curr_pos + 1 < tokens.size() && (tokens[curr_pos + 1].type == Token::IDENTIFIER || tokens[curr_pos + 1].type == Token::LBRACKET || tokens[curr_pos + 1].type == Token::STAR)) {
                 return parseStructVardecl();
             }
             return parseExprStmt();
@@ -512,7 +517,7 @@ Stmt* Parser::parseVardecl() {
         }     
     }
     expect(Token::SEMICOLON);
-    return new VarDeclStmt(type, variableName, "", initializer, 0, line, column);
+    return new VarDeclStmt(type, variableName, "", initializer, 0, false, line, column);
 }
 
 Stmt* Parser::parseIfStmt() {
@@ -838,6 +843,10 @@ Stmt* Parser::parseStructVardecl() {
         structName = tokens[curr_pos].value;
         expect(Token::IDENTIFIER);
     }
+    bool isPointer = false;
+    if(match(Token::STAR)) {
+        isPointer = true;
+    }
     uint32_t arr_size = 0;
     if(match(Token::LBRACKET)) {
         if(check(Token::NUMBER)) {
@@ -857,7 +866,8 @@ Stmt* Parser::parseStructVardecl() {
         }
     }
     expect(Token::SEMICOLON);
-    return new VarDeclStmt(Token::STRUCT_T, varName, structName, init, arr_size, line, column);
+    Token declType = isPointer ? Token::PSTRUCT_T : Token::STRUCT_T;
+    return new VarDeclStmt(declType, varName, structName, init, arr_size, isPointer, line, column);
 }
 Expr* Parser::parseStructLiteral() {
     int32_t line = getLine();
@@ -885,5 +895,8 @@ bool Parser::isGlobalStructVar() {
         if(tokens[curr_pos + 1].type == Token::IDENTIFIER) return true;
         if(tokens[curr_pos + 1].type == Token::LBRACKET) return true;
     }
+    if(tokens[curr_pos + 1].type == Token::IDENTIFIER) return true;
+    if(tokens[curr_pos + 1].type == Token::LBRACKET) return true;
+    if(tokens[curr_pos + 1].type == Token::STAR) return true;
     return false;
 }

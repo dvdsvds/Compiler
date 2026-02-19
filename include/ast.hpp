@@ -151,11 +151,13 @@ class VarDeclStmt : public Stmt {
         Expr* initializer;
         bool address_taken;
         uint32_t array_size;
+        bool isPointerType;
     public:
-        VarDeclStmt(Token type, const std::string& name, const std::string& struct_name, Expr* initializer, uint32_t array_size, int32_t line, int32_t column);
+        VarDeclStmt(Token type, const std::string& name, const std::string& struct_name, Expr* initializer, uint32_t array_size, bool isPointerType, int32_t line, int32_t column);
         Token getType() const;
         std::string getName() const;
         std::string getStructName() const;
+        bool isPointer() const;
         uint32_t getArraySize() const;
         Expr* getInitializer() const;
         bool isAddressTaken() const;
@@ -331,9 +333,11 @@ class MemberAccessExpr : public Expr {
     private:
         Expr* object;
         std::string memberName;
+        bool isArrow;
     public:
-        MemberAccessExpr(Expr* object, const std::string& memberName, int32_t line, int32_t column);
+        MemberAccessExpr(Expr* object, const std::string& memberName, int32_t line, int32_t column, bool isArrow = false);
         Expr* getObject() const;
+        bool isArrowAccess() const;
         std::string getMemberName() const;
         void accept(Visitor* v) override;
 };
@@ -343,7 +347,7 @@ class StructLiteralExpr : public Expr {
         std::vector<Expr*> values;
     public:
         StructLiteralExpr(const std::vector<Expr*>& values, int32_t line, int32_t column);
-        std::vector<Expr*> getValues() const;
+            std::vector<Expr*> getValues() const;
         void accept(Visitor* v) override;
 };
 

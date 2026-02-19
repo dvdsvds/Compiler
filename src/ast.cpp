@@ -71,14 +71,15 @@ std::vector<Expr*> ArrayExpr::getElements() const { return elements; }
 uint32_t ArrayExpr::getArraySize() const { return array_size; }
 void ArrayExpr::accept(Visitor* v) { v->visit(this); }
 
-VarDeclStmt::VarDeclStmt(Token type, const std::string& name, const std::string& struct_name, Expr* initializer, uint32_t array_size, int32_t line, int32_t column) 
-    : Stmt(line, column), type(type), name(name), struct_name(struct_name), initializer(initializer), address_taken(false), array_size(array_size) {}
+VarDeclStmt::VarDeclStmt(Token type, const std::string& name, const std::string& struct_name, Expr* initializer, uint32_t array_size, bool isPointerType, int32_t line, int32_t column) 
+    : Stmt(line, column), type(type), name(name), struct_name(struct_name), initializer(initializer), address_taken(false), array_size(array_size), isPointerType(isPointerType) {}
 Token VarDeclStmt::getType() const { return type; }
 std::string VarDeclStmt::getName() const { return name; }
 std::string VarDeclStmt::getStructName() const { return struct_name; }
 uint32_t VarDeclStmt::getArraySize() const { return array_size; }
 Expr* VarDeclStmt::getInitializer() const { return initializer; }
 bool VarDeclStmt::isAddressTaken() const { return address_taken; }
+bool VarDeclStmt::isPointer() const { return isPointerType; }
 void VarDeclStmt::setAddressTaken(bool taken) { address_taken = taken; }
 void VarDeclStmt::accept(Visitor* v) { v->visit(this); }
 
@@ -165,9 +166,10 @@ std::string StructDecl::getName() const { return name; }
 std::vector<StructMember> StructDecl::getMembers() const { return members; }
 void StructDecl::accept(Visitor* v) { v->visit(this); }                                                                                                        
 
-MemberAccessExpr::MemberAccessExpr(Expr* object, const std::string& memberName, int32_t line, int32_t column)
-    : Expr(line, column), object(object), memberName(memberName) {}
+MemberAccessExpr::MemberAccessExpr(Expr* object, const std::string& memberName, int32_t line, int32_t column, bool isArrow)
+    : Expr(line, column), object(object), memberName(memberName), isArrow(isArrow) {}
 Expr* MemberAccessExpr::getObject() const { return object; }
+bool MemberAccessExpr::isArrowAccess() const { return isArrow; }
 std::string MemberAccessExpr::getMemberName() const { return memberName; }
 void MemberAccessExpr::accept(Visitor* v) { v->visit(this); }
 

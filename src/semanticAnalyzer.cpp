@@ -493,6 +493,19 @@ void SemanticAnalyzer::visit(VarDeclStmt* node) {
         return;
     }
 
+    if(node->getType() == Token::PSTRUCT_T) {
+        std::string sname = node->getStructName();
+        if(struct_defs.find(sname) == struct_defs.end()) {
+            add_error({"Struct '" + sname + "' is not defined", errorType::VARIABLE_REDECLARED, node->get_line(), node->get_column()});
+        }
+        if(node->getInitializer() != nullptr) {
+            node->getInitializer()->accept(this);
+        }
+        TokenData varType = {Token::PSTRUCT_T, sname, node->get_line(), node->get_column()};
+        track_symbol->insert(node->getName(), {node->getName(), varType, track_symbol->curr_scope(), false, false});
+        return;
+    }
+
     if(node->getInitializer() != nullptr) {
         node->getInitializer()->accept(this);
         if(node->getInitializer()->getType() == Token::INVALID && !dynamic_cast<ArrayExpr*>(node->getInitializer())) {
@@ -658,7 +671,8 @@ void SemanticAnalyzer::visit(StructDecl* node) {
 }
 void SemanticAnalyzer::visit(MemberAccessExpr* node) {
     node->getObject()->accept(this);
-    if(node->getObject()->getType() != Token::STRUCT_T) {
+    Token expectedType = node->isArrowAccess() ? Token::PSTRUCT_T : Token::STRUCT_T;
+    if(node->getObject()->getType() != expectedType) {
         add_error({"Member access on non-struct type " + tokenToString(node->getObject()->getType()), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
         node->setType(Token::INVALID);
         return;

@@ -716,6 +716,14 @@ FunctionDecl* Parser::parseFunction() {
     if(!check(Token::RPAREN)) {
         while(true) {
             Token parameterType = advance();
+            std::string paramStructName = "";
+            if(parameterType == Token::IDENTIFIER) {
+                std::string typeName = tokens[curr_pos - 1].value;
+                if(structName.count(typeName)) {
+                    paramStructName = typeName;
+                    parameterType = Token::STRUCT_T;
+                }
+            }
             if(match(Token::LBRACKET)) {
                 if(check(Token::NUMBER)) { advance(); }
                 expect(Token::RBRACKET);
@@ -747,7 +755,7 @@ FunctionDecl* Parser::parseFunction() {
             }
             std::string parameterName = tokens[curr_pos].value;
             expect(Token::IDENTIFIER);
-            parameters.push_back(Parameter{parameterType, parameterName});
+            parameters.push_back(Parameter{parameterType, parameterName, paramStructName});
             if(!match(Token::COMMA)) {
                 break;
             } else {

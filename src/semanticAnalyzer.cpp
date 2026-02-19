@@ -716,7 +716,7 @@ void SemanticAnalyzer::visit(FunctionDecl* node) {
             add_error({"Parameter '" + param.name + "' is already declared", errorType::VARIABLE_REDECLARED, node->get_line(), node->get_column()});
             continue;
         }
-        TokenData paramType = {param.type, "", node->get_line(), node->get_column()};
+        TokenData paramType = {param.type, param.structName, node->get_line(), node->get_column()};
         track_symbol->insert(param.name, {param.name, paramType, track_symbol->curr_scope(), false, false});
     }
     
@@ -745,7 +745,7 @@ void SemanticAnalyzer::visit(Program* node) {
 
         paramType.clear();
         for(const auto& params : func->getParameters()) {
-            paramType.push_back(TokenData{params.type, "", node->get_line(), node->get_column()});
+            paramType.push_back(TokenData{params.type, params.structName, node->get_line(), node->get_column()});
         }
 
         TokenData returnType = TokenData{func->getReturnType(), "", node->get_line(), node->get_column()};

@@ -164,6 +164,12 @@ Operand* IRBuilder::visitCallExpr(CallExpr* node) {
 
     std::vector<Operand*> call_args;
     for(const auto& args : node->getArguments()) {
+        if(VariableExpr* varExpr = dynamic_cast<VariableExpr*>(args)) {
+            if(struct_var_types.count(varExpr->getName())) {
+                call_args.push_back(local_vars[varExpr->getName()]);
+                continue;
+            }
+        }
         call_args.push_back(evaluateExpr(args));
     }
 
@@ -728,6 +734,10 @@ void IRBuilder::visitFunctionDecl(FunctionDecl* node) {
         Operand* p_type = newVirtualReg(parameter.type);
         params.push_back(p_type);
         local_vars[parameter.name] = p_type;
+        if(parameter.type == Token::STRUCT_T) {
+            var_address_taken[parameter.name] = true;
+            struct_var_types[parameter.name] = parameter.structName;
+        }
     }
 
     IRFunction* func = new IRFunction(node->getName(), params, node->getReturnType());
@@ -747,6 +757,9 @@ void IRBuilder::visitFunctionDecl(FunctionDecl* node) {
     }
 
     evaluateStmt(node->getBody());
+    if(node->getReturnType() == Token::VOID) {
+        curr_block->addInstruction(IRInstruction::createReturn(nullptr));
+    }
     module->addFunction(func);
 
     local_vars.clear();

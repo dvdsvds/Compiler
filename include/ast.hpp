@@ -277,6 +277,7 @@ class PrintStmt : public Stmt {
 struct Parameter {
     Token type;
     std::string name;
+    std::string structName;
 };
 
 class FunctionDecl : public ASTNode {

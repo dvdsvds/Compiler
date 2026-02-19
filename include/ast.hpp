@@ -150,11 +150,13 @@ class VarDeclStmt : public Stmt {
         std::string struct_name;
         Expr* initializer;
         bool address_taken;
+        uint32_t array_size;
     public:
-        VarDeclStmt(Token type, const std::string& name, const std::string& struct_name, Expr* initializer, int32_t line, int32_t column);
+        VarDeclStmt(Token type, const std::string& name, const std::string& struct_name, Expr* initializer, uint32_t array_size, int32_t line, int32_t column);
         Token getType() const;
         std::string getName() const;
         std::string getStructName() const;
+        uint32_t getArraySize() const;
         Expr* getInitializer() const;
         bool isAddressTaken() const;
         void setAddressTaken(bool taken);

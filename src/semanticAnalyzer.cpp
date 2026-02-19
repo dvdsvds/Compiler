@@ -372,6 +372,9 @@ void SemanticAnalyzer::visit(ArrayAccessExpr* node) {
         case Token::BOOL_ARRAY:
             node->setType(Token::BOOL);
             break;
+        case Token::STRUCT_T:
+            node->setType(Token::STRUCT_T);
+            break;
         default:
             add_error({"Array access on non-array type " + tokenToString(arrayType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
             node->setType(Token::INVALID);
@@ -380,21 +383,6 @@ void SemanticAnalyzer::visit(ArrayAccessExpr* node) {
 };
 
 void SemanticAnalyzer::visit(InExpr* node) {
-    // Symbol* sym = track_symbol->lookup(node->getVariableName());
-    // if(sym == nullptr) {
-    //     add_error({"Variable '" + node->getVariableName() + "' is not declared", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
-    //     node->setType(Token::INVALID);
-    //     return;
-    // }
-    
-    // if(out_consumed.find(node->getVariableName()) == out_consumed.end()) {
-    //     add_error({"in() can only be used with out variables", errorType::IN_NON_OUT_VARIABLE, node->get_line(), node->get_column()});
-    //     node->setType(Token::INVALID);
-    //     return;
-    // }
-    
-    // out_consumed[node->getVariableName()] = true;
-    // node->setType(sym->get_type().type);
     if(out_consumed.find(node->getVariableName()) == out_consumed.end()) {
         add_error({"in() can only be used with out variables", errorType::IN_NON_OUT_VARIABLE, node->get_line(), node->get_column()});
         node->setType(Token::INVALID);
@@ -679,7 +667,13 @@ void SemanticAnalyzer::visit(MemberAccessExpr* node) {
     if(auto* varExpr = dynamic_cast<VariableExpr*>(node->getObject())) {
         Symbol* sym = track_symbol->lookup(varExpr->getName());
         if(sym) structName = sym->get_type().value;
+    } else if(auto* arrExpr = dynamic_cast<ArrayAccessExpr*>(node->getObject())) {
+        if(auto* varExpr = dynamic_cast<VariableExpr*>(arrExpr->getArrayName())) {
+            Symbol* sym = track_symbol->lookup(varExpr->getName());
+            if(sym) structName = sym->get_type().value;
+        }
     }
+
     auto it = struct_defs.find(structName);
     if(it == struct_defs.end()) {
         add_error({"Struct '" + structName + "' is not defined", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});

@@ -21,7 +21,7 @@ Program* Parser::parse() {
     while(!isAtEnd()) {
         if(check(Token::STRUCT) && curr_pos + 2 < tokens.size() && tokens[curr_pos + 2].type == Token::LBRACE) {
             structs.push_back(parseStruct());
-        } else if(peek() == Token::IDENTIFIER && structName.count(tokens[curr_pos].value) && curr_pos + 1 < tokens.size() && tokens[curr_pos + 1].type == Token::IDENTIFIER) {
+        } else if(peek() == Token::IDENTIFIER && structName.count(tokens[curr_pos].value) && curr_pos + 1 < tokens.size() && (tokens[curr_pos + 1].type == Token::IDENTIFIER || tokens[curr_pos + 1].type == Token::LBRACKET)) {
             globals.push_back(static_cast<VarDeclStmt*>(parseStructVardecl()));
         } else if(isGlobalStructVar()) {
             globals.push_back(static_cast<VarDeclStmt*>(parseStructVardecl()));
@@ -455,11 +455,10 @@ Stmt* Parser::parseStatement() {
         case Token::CONTINUE:
             return parseContinueStmt();
         default:
-            if(peek() == Token::IDENTIFIER && structName.count(tokens[curr_pos].value) && curr_pos + 1 < tokens.size() && tokens[curr_pos + 1].type == Token::IDENTIFIER) {
+            if(peek() == Token::IDENTIFIER && structName.count(tokens[curr_pos].value) && curr_pos + 1 < tokens.size() && (tokens[curr_pos + 1].type == Token::IDENTIFIER || tokens[curr_pos + 1].type == Token::LBRACKET)) {
                 return parseStructVardecl();
             }
             return parseExprStmt();
-
     }
 }
 
@@ -513,7 +512,7 @@ Stmt* Parser::parseVardecl() {
         }     
     }
     expect(Token::SEMICOLON);
-    return new VarDeclStmt(type, variableName, "", initializer, line, column);
+    return new VarDeclStmt(type, variableName, "", initializer, 0, line, column);
 }
 
 Stmt* Parser::parseIfStmt() {
@@ -839,6 +838,14 @@ Stmt* Parser::parseStructVardecl() {
         structName = tokens[curr_pos].value;
         expect(Token::IDENTIFIER);
     }
+    uint32_t arr_size = 0;
+    if(match(Token::LBRACKET)) {
+        if(check(Token::NUMBER)) {
+            arr_size = std::stoi(tokens[curr_pos].value);
+            advance();
+        }
+        expect(Token::RBRACKET);
+    }
     std::string varName = tokens[curr_pos].value;
     expect(Token::IDENTIFIER);
     Expr* init = nullptr;
@@ -850,7 +857,7 @@ Stmt* Parser::parseStructVardecl() {
         }
     }
     expect(Token::SEMICOLON);
-    return new VarDeclStmt(Token::STRUCT_T, varName, structName, init, line, column);
+    return new VarDeclStmt(Token::STRUCT_T, varName, structName, init, arr_size, line, column);
 }
 Expr* Parser::parseStructLiteral() {
     int32_t line = getLine();
@@ -867,7 +874,7 @@ Expr* Parser::parseStructLiteral() {
     return new StructLiteralExpr(values, line, column);
 }
 bool Parser::isGlobalStructVar() {
-    if(peek() != Token::STRUCT) {
+    if(peek() == Token::STRUCT) {
         if(curr_pos + 1 >= tokens.size()) return false;
         if(tokens[curr_pos + 1].type != Token::IDENTIFIER) return false;
         if(curr_pos + 2 >= tokens.size()) return false;
@@ -875,7 +882,8 @@ bool Parser::isGlobalStructVar() {
     }
     if(peek() == Token::IDENTIFIER && structName.count(tokens[curr_pos].value)) {
         if(curr_pos + 1 >= tokens.size()) return false;
-        return tokens[curr_pos + 1].type == Token::IDENTIFIER;
+        if(tokens[curr_pos + 1].type == Token::IDENTIFIER) return true;
+        if(tokens[curr_pos + 1].type == Token::LBRACKET) return true;
     }
     return false;
 }

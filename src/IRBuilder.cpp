@@ -316,7 +316,17 @@ void IRBuilder::visitVarDeclStmt(VarDeclStmt* node) {
 
         Operand* addr = newVirtualReg(Token::S32);
         Operand* size_op = Operand::createConstant(num_members * 4, Token::S32);
+        if(node->getArraySize() > 0) {
+            uint32_t total_size = node->getArraySize() * num_members * 4;
+            Operand* size_op = Operand::createConstant(total_size, Token::S32);
+            curr_block->addInstruction(IRInstruction::createAlloca(addr, size_op));
+            local_vars[fname] = addr;
+            var_address_taken[fname] = true;
+            struct_var_types[fname] = sname;
+            return;
+        }
         curr_block->addInstruction(IRInstruction::createAlloca(addr, size_op));
+
 
         if(node->getInitializer() != nullptr) {
             if(StructLiteralExpr* lit = dynamic_cast<StructLiteralExpr*>(node->getInitializer())) {
@@ -731,6 +741,19 @@ Operand* IRBuilder::visitMemberAccessExprR(MemberAccessExpr* node) {
     if(VariableExpr* varExpr = dynamic_cast<VariableExpr*>(node->getObject())) {
         base_addr = local_vars[varExpr->getName()];
         structName = struct_var_types[varExpr->getName()];
+    } else if(ArrayAccessExpr* arrExpr = dynamic_cast<ArrayAccessExpr*>(node->getObject())) {
+        if(VariableExpr* varExpr = dynamic_cast<VariableExpr*>(arrExpr->getArrayName())) {
+            Operand* arr_base = local_vars[varExpr->getName()];
+            structName = struct_var_types[varExpr->getName()];
+            StructDecl* decl = struct_defs[structName];
+            uint32_t struct_size = decl->getMembers().size() * 4;
+            Operand* index = evaluateExpr(arrExpr->getIndex());
+            Operand* struct_size_op = Operand::createConstant(struct_size, Token::S32);
+            Operand* element_offset = newVirtualReg(Token::S32);
+            curr_block->addInstruction(IRInstruction::createMul(element_offset, index, struct_size_op));
+            base_addr = newVirtualReg(Token::S32);
+            curr_block->addInstruction(IRInstruction::createAdd(base_addr, arr_base, element_offset));
+        }
     } else {
         base_addr = evaluateExpr(node->getObject());
     }

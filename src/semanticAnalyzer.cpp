@@ -491,6 +491,20 @@ void SemanticAnalyzer::visit(VarDeclStmt* node) {
         return;
     }
 
+    if(node->getType() == Token::STRUCT_T) {
+        std::string sname = node->getStructName();
+        if(struct_defs.find(sname) == struct_defs.end()) {
+            add_error({"Struct '" + sname + "' is not defined", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
+            return;
+        }
+        if(node->getInitializer() != nullptr) {
+            node->getInitializer()->accept(this);
+        }
+        TokenData varType = {Token::STRUCT_T, sname, node->get_line(), node->get_column()};
+        track_symbol->insert(node->getName(), {node->getName(), varType, track_symbol->curr_scope(), false, false});
+        return;
+    }
+
     if(node->getInitializer() != nullptr) {
         node->getInitializer()->accept(this);
         if(node->getInitializer()->getType() == Token::INVALID && !dynamic_cast<ArrayExpr*>(node->getInitializer())) {
@@ -647,6 +661,47 @@ void SemanticAnalyzer::visit(ExprStmt* node) {
 
 void SemanticAnalyzer::visit(ImportDecl* node) { }
 
+void SemanticAnalyzer::visit(StructDecl* node) {
+    if(struct_defs.find(node->getName()) != struct_defs.end()) {
+        add_error({"Struct '" + node->getName() + "' is already defined", errorType::VARIABLE_REDECLARED, node->get_line(), node->get_column()});
+        return;
+    }
+    struct_defs[node->getName()] = node;
+}
+void SemanticAnalyzer::visit(MemberAccessExpr* node) {
+    node->getObject()->accept(this);
+    if(node->getObject()->getType() != Token::STRUCT_T) {
+        add_error({"Member access on non-struct type " + tokenToString(node->getObject()->getType()), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+        node->setType(Token::INVALID);
+        return;
+    }
+    std::string structName;
+    if(auto* varExpr = dynamic_cast<VariableExpr*>(node->getObject())) {
+        Symbol* sym = track_symbol->lookup(varExpr->getName());
+        if(sym) structName = sym->get_type().value;
+    }
+    auto it = struct_defs.find(structName);
+    if(it == struct_defs.end()) {
+        add_error({"Struct '" + structName + "' is not defined", errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
+        node->setType(Token::INVALID);
+        return;
+    }
+    for(auto& member : it->second->getMembers()) {
+        if(member.name == node->getMemberName()) {
+            node->setType(member.type);
+            return;
+        }
+    }
+    add_error({"Member '" + node->getMemberName() + "' not found in struct '" + structName + "'", errorType::VARIABLE_UNDECLARED, node->get_line(), node->get_column()});
+    node->setType(Token::INVALID);
+}
+void SemanticAnalyzer::visit(StructLiteralExpr* node) {
+    for(auto* val : node->getValues()) {
+        val->accept(this);
+    }
+    node->setType(Token::STRUCT_T);
+}
+
 void SemanticAnalyzer::visit(PrintStmt* node) {
     node->getExpression()->accept(this);
 }
@@ -671,6 +726,10 @@ void SemanticAnalyzer::visit(FunctionDecl* node) {
 }
 
 void SemanticAnalyzer::visit(Program* node) { 
+    for(const auto& s : node->getStructs()) {
+        s->accept(this);
+    }
+
     for(const auto& global : node->getGlobals()) {
         TokenData varType = {global->getType(), "", global->get_line(), global->get_column()};
         track_symbol->insert(global->getName(), {global->getName(), varType, track_symbol->curr_scope(), false, false});

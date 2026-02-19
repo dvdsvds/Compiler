@@ -147,12 +147,14 @@ class VarDeclStmt : public Stmt {
     private:
         Token type;
         std::string name;
+        std::string struct_name;
         Expr* initializer;
         bool address_taken;
     public:
-        VarDeclStmt(Token type, const std::string& name, Expr* initializer, int32_t line, int32_t column);
+        VarDeclStmt(Token type, const std::string& name, const std::string& struct_name, Expr* initializer, int32_t line, int32_t column);
         Token getType() const;
         std::string getName() const;
+        std::string getStructName() const;
         Expr* getInitializer() const;
         bool isAddressTaken() const;
         void setAddressTaken(bool taken);
@@ -304,15 +306,53 @@ class ImportDecl : public ASTNode {
         void accept(Visitor* v) override;
 };
 
+struct StructMember {
+    Token type;
+    std::string name;
+};
+
+class StructDecl : public ASTNode {
+    private:
+        std::string name;
+        std::vector<StructMember> members;
+    public:
+        StructDecl(const std::string& name, const std::vector<StructMember>& members, int32_t line, int32_t column);
+        std::string getName() const;
+        std::vector<StructMember> getMembers() const;
+        void accept(Visitor* v) override;
+};
+
+class MemberAccessExpr : public Expr {
+    private:
+        Expr* object;
+        std::string memberName;
+    public:
+        MemberAccessExpr(Expr* object, const std::string& memberName, int32_t line, int32_t column);
+        Expr* getObject() const;
+        std::string getMemberName() const;
+        void accept(Visitor* v) override;
+};
+
+class StructLiteralExpr : public Expr {
+    private:
+        std::vector<Expr*> values;
+    public:
+        StructLiteralExpr(const std::vector<Expr*>& values, int32_t line, int32_t column);
+        std::vector<Expr*> getValues() const;
+        void accept(Visitor* v) override;
+};
+
 class Program : public ASTNode {
     private:
         std::vector<ImportDecl*> imports;
         std::vector<VarDeclStmt*> globals;
         std::vector<FunctionDecl*> functions;
+        std::vector<StructDecl*> structs;
     public:
-        Program(const std::vector<ImportDecl*>& imports, const std::vector<VarDeclStmt*>& globals, const std::vector<FunctionDecl*>& functions, int32_t line, int32_t column);
+        Program(const std::vector<ImportDecl*>& imports, const std::vector<VarDeclStmt*>& globals, const std::vector<FunctionDecl*>& functions, const std::vector<StructDecl*>& structs, int32_t line, int32_t column);
         std::vector<ImportDecl*> getImports() const;
         std::vector<VarDeclStmt*> getGlobals() const;
         std::vector<FunctionDecl*> getFunctions() const;
+        std::vector<StructDecl*> getStructs() const;
         void accept(Visitor* v) override;
 };

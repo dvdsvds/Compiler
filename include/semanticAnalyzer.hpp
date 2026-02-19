@@ -51,6 +51,7 @@ class SemanticAnalyzer : public Visitor {
         std::map<std::string, bool> out_consumed;
         std::map<std::string, std::vector<RecvInfo>> function_recvs;
         std::vector<SendInfo> all_sends;
+        std::map<std::string, StructDecl*> struct_defs;
         std::string curr_function_name;
         bool in_loop = false;
 
@@ -91,6 +92,9 @@ class SemanticAnalyzer : public Visitor {
         void visit(ExprStmt* node) override;
         void visit(PrintStmt* node) override;
         void visit(ImportDecl* node) override;
+        void visit(StructDecl* node) override;
+        void visit(MemberAccessExpr* node) override;
+        void visit(StructLiteralExpr* node) override;
         void visit(FunctionDecl* node) override;
         void visit(Program* node) override;
 };

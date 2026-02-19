@@ -6,21 +6,33 @@ Parser::Parser(const std::vector<TokenData>& tokens) : tokens(tokens), curr_pos(
 Program* Parser::parse() {
     std::vector<ImportDecl*> imports;
     std::vector<FunctionDecl*> functions;
+    std::vector<StructDecl*> structs;
 
     while(check(Token::IMPORT)) {
         imports.push_back(parseImport());
     }
 
     std::vector<VarDeclStmt*> globals;
+    for(size_t i = 0; i + 2 < tokens.size(); i++) {
+        if(tokens[i].type == Token::STRUCT && tokens[i + 2].type == Token::LBRACE) {
+            structName.insert(tokens[i + 1].value);
+        }
+    }
     while(!isAtEnd()) {
-        if(isGlobalVar()) {
+        if(check(Token::STRUCT) && curr_pos + 2 < tokens.size() && tokens[curr_pos + 2].type == Token::LBRACE) {
+            structs.push_back(parseStruct());
+        } else if(peek() == Token::IDENTIFIER && structName.count(tokens[curr_pos].value) && curr_pos + 1 < tokens.size() && tokens[curr_pos + 1].type == Token::IDENTIFIER) {
+            globals.push_back(static_cast<VarDeclStmt*>(parseStructVardecl()));
+        } else if(isGlobalStructVar()) {
+            globals.push_back(static_cast<VarDeclStmt*>(parseStructVardecl()));
+        } else if(isGlobalVar()) {
             globals.push_back(static_cast<VarDeclStmt*>(parseVardecl()));
         } else {
             functions.push_back(parseFunction());
         }
     }
 
-    return new Program(imports, globals, functions, 0, 0);
+    return new Program(imports, globals, functions, structs, 0, 0);
 }
 
 Token Parser::peek() {
@@ -362,6 +374,10 @@ Expr* Parser::parsePostfix() {
             left = new BinaryExpr(left, Token::PLUS_EQ, new LiteralExpr(Token::NUMBER, "1", line, column), line, column);
         } else if(match(Token::DEC)) {
             left = new BinaryExpr(left, Token::MINUS_EQ, new LiteralExpr(Token::NUMBER, "1", line, column), line, column);
+        } else if(match(Token::DOT)) {
+            std::string memberName = tokens[curr_pos].value;
+            expect(Token::IDENTIFIER);
+            left = new MemberAccessExpr(left, memberName, line, column);
         } else {
             break;
         }
@@ -418,6 +434,8 @@ Stmt* Parser::parseStatement() {
         case Token::PUS32:
         case Token::BOOL:
             return parseVardecl();
+        case Token::STRUCT:
+            return parseStructVardecl();
         case Token::IF:
             return parseIfStmt();
         case Token::LOOP:
@@ -437,7 +455,11 @@ Stmt* Parser::parseStatement() {
         case Token::CONTINUE:
             return parseContinueStmt();
         default:
+            if(peek() == Token::IDENTIFIER && structName.count(tokens[curr_pos].value) && curr_pos + 1 < tokens.size() && tokens[curr_pos + 1].type == Token::IDENTIFIER) {
+                return parseStructVardecl();
+            }
             return parseExprStmt();
+
     }
 }
 
@@ -491,7 +513,7 @@ Stmt* Parser::parseVardecl() {
         }     
     }
     expect(Token::SEMICOLON);
-    return new VarDeclStmt(type, variableName, initializer, line, column);
+    return new VarDeclStmt(type, variableName, "", initializer, line, column);
 }
 
 Stmt* Parser::parseIfStmt() {
@@ -768,4 +790,72 @@ FunctionDecl* Parser::parseFunction() {
     
     Stmt* body = parseBlock();
     return new FunctionDecl(name, parameters, returnType, body, line, column);
+}
+
+StructDecl* Parser::parseStruct() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
+    expect(Token::STRUCT);
+    std::string name = tokens[curr_pos].value;
+    expect(Token::IDENTIFIER);
+    expect(Token::LBRACE);
+    std::vector<StructMember> members;
+    while(!check(Token::RBRACE)) {
+        Token memberType = advance();
+        std::string memberName = tokens[curr_pos].value;
+        expect(Token::IDENTIFIER);
+        expect(Token::SEMICOLON);
+        members.push_back(StructMember{memberType, memberName});
+    }
+    expect(Token::RBRACE);
+    expect(Token::SEMICOLON);
+    return new StructDecl(name, members, line, column);
+}
+Stmt* Parser::parseStructVardecl() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
+    std::string structName;
+    if(check(Token::STRUCT)) {
+        expect(Token::STRUCT);
+        structName = tokens[curr_pos].value;
+        expect(Token::IDENTIFIER);
+    } else {
+        structName = tokens[curr_pos].value;
+        expect(Token::IDENTIFIER);
+    }
+    std::string varName = tokens[curr_pos].value;
+    expect(Token::IDENTIFIER);
+    Expr* init = nullptr;
+    if(match(Token::ASSIGN)) {
+        init = parseStructLiteral();
+    }
+    expect(Token::SEMICOLON);
+    return new VarDeclStmt(Token::STRUCT_T, varName, structName, init, line, column);
+}
+Expr* Parser::parseStructLiteral() {
+    int32_t line = getLine();
+    int32_t column = getColumn();
+    expect(Token::LBRACE);
+    std::vector<Expr*> values;
+    if(!check(Token::RBRACE)) {
+        while(true) {
+            values.push_back(parseExpression());
+            if(!match(Token::COMMA)) break;
+        }
+    }
+    expect(Token::RBRACE);
+    return new StructLiteralExpr(values, line, column);
+}
+bool Parser::isGlobalStructVar() {
+    if(peek() != Token::STRUCT) {
+        if(curr_pos + 1 >= tokens.size()) return false;
+        if(tokens[curr_pos + 1].type != Token::IDENTIFIER) return false;
+        if(curr_pos + 2 >= tokens.size()) return false;
+        return tokens[curr_pos + 2].type == Token::IDENTIFIER;
+    }
+    if(peek() == Token::IDENTIFIER && structName.count(tokens[curr_pos].value)) {
+        if(curr_pos + 1 >= tokens.size()) return false;
+        return tokens[curr_pos + 1].type == Token::IDENTIFIER;
+    }
+    return false;
 }

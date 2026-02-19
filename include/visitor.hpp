@@ -24,6 +24,9 @@ class BlockStmt;
 class ExprStmt;
 class PrintStmt;
 class ImportDecl;
+class StructDecl;
+class MemberAccessExpr;
+class StructLiteralExpr;
 class FunctionDecl;
 class Program;
 
@@ -54,6 +57,9 @@ class Visitor {
         virtual void visit(ExprStmt* node) = 0;
         virtual void visit(PrintStmt* node) = 0;
         virtual void visit(ImportDecl* node) = 0;
+        virtual void visit(StructDecl* node) = 0;
+        virtual void visit(MemberAccessExpr* node) = 0;
+        virtual void visit(StructLiteralExpr* node) = 0;
         virtual void visit(FunctionDecl* node) = 0;
         virtual void visit(Program* node) = 0;
 };

@@ -131,6 +131,9 @@ Operand* IRBuilder::visitBinaryExpr(BinaryExpr* node) {
                 Operand* actual_addr = newVirtualReg(Token::S32);
                 curr_block->addInstruction(IRInstruction::createAdd(actual_addr, array_addr, offset));
                 curr_block->addInstruction(IRInstruction::createStore(actual_addr, result_value));
+            } else if(MemberAccessExpr* memberAccess = dynamic_cast<MemberAccessExpr*>(node->getLeft())) {
+                Operand* addr = visitMemberAccessExprR(memberAccess);
+                curr_block->addInstruction(IRInstruction::createStore(addr, result_value));
             }
             return result_value;
         }
@@ -299,6 +302,48 @@ Operand* IRBuilder::visitArrayExpr(ArrayExpr* node) {
 void IRBuilder::visitVarDeclStmt(VarDeclStmt* node) {
     std::string fname = node->getName();
     Token func_type = node->getType();
+
+    if(func_type == Token::STRUCT_T) {
+        std::string sname = node->getStructName();
+        StructDecl* decl = struct_defs[sname];
+        uint32_t num_members = decl->getMembers().size();
+
+        Operand* addr = newVirtualReg(Token::S32);
+        Operand* size_op = Operand::createConstant(num_members * 4, Token::S32);
+        curr_block->addInstruction(IRInstruction::createAlloca(addr, size_op));
+
+        if(node->getInitializer() != nullptr) {
+            if(StructLiteralExpr* lit = dynamic_cast<StructLiteralExpr*>(node->getInitializer())) {
+                auto values = lit->getValues();
+                for(uint32_t i = 0; i < values.size(); i++) {
+                    Operand* val = evaluateExpr(values[i]);
+                    if(val->isConstant()) {
+                        Operand* temp = newVirtualReg(Token::S32);
+                        curr_block->addInstruction(IRInstruction::createCopy(temp, val));
+                        val = temp;
+                    }
+                    Operand* offset = Operand::createConstant(i * 4, Token::S32);
+                    Operand* member_addr = newVirtualReg(Token::S32);
+                    curr_block->addInstruction(IRInstruction::createAdd(member_addr, addr, offset));
+                    curr_block->addInstruction(IRInstruction::createStore(member_addr, val));
+                }
+            }
+        } else {
+            for(uint32_t i = 0; i < num_members; i++) {
+                Operand* temp = newVirtualReg(Token::S32);
+                curr_block->addInstruction(IRInstruction::createCopy(temp, Operand::createConstant(0, Token::S32)));
+                Operand* offset = Operand::createConstant(i * 4, Token::S32);
+                Operand* member_addr = newVirtualReg(Token::S32);
+                curr_block->addInstruction(IRInstruction::createAdd(member_addr, addr, offset));
+                curr_block->addInstruction(IRInstruction::createStore(member_addr, temp));
+            }
+        }
+
+        local_vars[fname] = addr;
+        var_address_taken[fname] = true;
+        struct_var_types[fname] = sname;
+        return;
+    }
 
     Operand* init_value;
     if(node->getInitializer() != nullptr) {
@@ -638,6 +683,40 @@ void IRBuilder::visitExprStmt(ExprStmt* node) {
 
 void IRBuilder::visitImportDecl(ImportDecl* node) { }
 
+void IRBuilder::visitStructDecl(StructDecl* node) {
+    struct_defs[node->getName()] = node;
+}
+void IRBuilder::visitMemberAccessExpr(MemberAccessExpr* node) { }
+Operand* IRBuilder::visitMemberAccessExprR(MemberAccessExpr* node) { 
+    Operand* base_addr = nullptr;
+    std::string structName;
+
+    if(VariableExpr* varExpr = dynamic_cast<VariableExpr*>(node->getObject())) {
+        base_addr = local_vars[varExpr->getName()];
+        structName = struct_var_types[varExpr->getName()];
+    } else {
+        base_addr = evaluateExpr(node->getObject());
+    }
+
+    StructDecl* decl = struct_defs[structName];
+    if(!decl) return nullptr;
+    
+    int member_index = -1;
+    for(int i = 0; i < (int)decl->getMembers().size(); i++) {
+        if(decl->getMembers()[i].name == node->getMemberName()) {
+            member_index = i;
+            break;
+        }
+    }
+    if(member_index < 0) return nullptr;
+
+    Operand* offset = Operand::createConstant(member_index * 4, Token::S32);
+    Operand* member_addr = newVirtualReg(Token::S32);
+    curr_block->addInstruction(IRInstruction::createAdd(member_addr, base_addr, offset));
+    return member_addr;
+}
+void IRBuilder::visitStructLiteralExpr(StructLiteralExpr* node) { }
+
 void IRBuilder::visitPrintStmt(PrintStmt* node) {
     Operand* value = evaluateExpr(node->getExpression());
     curr_block->addInstruction(IRInstruction::createPrint(value));
@@ -674,6 +753,10 @@ void IRBuilder::visitFunctionDecl(FunctionDecl* node) {
     var_address_taken.clear();
 }
 void IRBuilder::visitProgram(Program* node) {
+    for(const auto& s : node->getStructs()) {
+        visitStructDecl(s);
+    }
+
     for(const auto& global : node->getGlobals()) {
         global_addr_map[global->getName()] = global_base;
         global_var_names.insert(global->getName());
@@ -711,6 +794,11 @@ Operand* IRBuilder::evaluateExpr(Expr* expr) {
         return visitDereferenceExpr(deref);
     } else if(ArrayExpr* arr = dynamic_cast<ArrayExpr*>(expr)) {
         return visitArrayExpr(arr);
+    } else if(MemberAccessExpr* member = dynamic_cast<MemberAccessExpr*>(expr)) {
+        Operand* addr = visitMemberAccessExprR(member);
+        Operand* result = newVirtualReg(member->getType());
+        curr_block->addInstruction(IRInstruction::createLoad(result, addr));
+        return result;
     }
     else {
         return nullptr;

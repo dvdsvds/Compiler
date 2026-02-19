@@ -31,6 +31,9 @@ class IRBuilder {
         Operand* evaluateExpr(Expr* expr);
         void evaluateStmt(Stmt* stmt);
 
+        std::map<std::string, StructDecl*> struct_defs;
+        std::map<std::string, std::string> struct_var_types;
+
     public:
         IRBuilder(IRModule* module, SymbolTable* track_symbol);
         Operand* newVirtualReg(Token data_type);
@@ -64,6 +67,10 @@ class IRBuilder {
         void visitPrintStmt(PrintStmt* node);
 
         void visitImportDecl(ImportDecl* node);
+        void visitStructDecl(StructDecl* node);
+        void visitMemberAccessExpr(MemberAccessExpr* node);
+        Operand* visitMemberAccessExprR(MemberAccessExpr* node);
+        void visitStructLiteralExpr(StructLiteralExpr* node);
         void visitFunctionDecl(FunctionDecl* node);
         void visitProgram(Program* node);
 };

@@ -71,10 +71,11 @@ std::vector<Expr*> ArrayExpr::getElements() const { return elements; }
 uint32_t ArrayExpr::getArraySize() const { return array_size; }
 void ArrayExpr::accept(Visitor* v) { v->visit(this); }
 
-VarDeclStmt::VarDeclStmt(Token type, const std::string& name, Expr* initializer, int32_t line, int32_t column) 
-    : Stmt(line, column), type(type), name(name), initializer(initializer), address_taken(false) {}
+VarDeclStmt::VarDeclStmt(Token type, const std::string& name, const std::string& struct_name, Expr* initializer, int32_t line, int32_t column) 
+    : Stmt(line, column), type(type), name(name), struct_name(struct_name), initializer(initializer), address_taken(false) {}
 Token VarDeclStmt::getType() const { return type; }
 std::string VarDeclStmt::getName() const { return name; }
+std::string VarDeclStmt::getStructName() const { return struct_name; }
 Expr* VarDeclStmt::getInitializer() const { return initializer; }
 bool VarDeclStmt::isAddressTaken() const { return address_taken; }
 void VarDeclStmt::setAddressTaken(bool taken) { address_taken = taken; }
@@ -156,9 +157,27 @@ std::vector<std::string> ImportDecl::getSymbols() const { return symbols; }
 bool ImportDecl::isSelectiveImport() const { return !symbols.empty(); }
 void ImportDecl::accept(Visitor* v) { v->visit(this); }
 
-Program::Program(const std::vector<ImportDecl*>& imports, const std::vector<VarDeclStmt*>& globals, const std::vector<FunctionDecl*>& functions, int32_t line, int32_t column) 
-    : ASTNode(line, column), imports(imports), globals(globals), functions(functions) {}
+StructDecl::StructDecl(const std::string& name, const std::vector<StructMember>& members, int32_t line, int32_t column)
+    : ASTNode(line, column), name(name), members(members) {}
+std::string StructDecl::getName() const { return name; }                                                                                                       
+std::vector<StructMember> StructDecl::getMembers() const { return members; }
+void StructDecl::accept(Visitor* v) { v->visit(this); }                                                                                                        
+
+MemberAccessExpr::MemberAccessExpr(Expr* object, const std::string& memberName, int32_t line, int32_t column)
+    : Expr(line, column), object(object), memberName(memberName) {}
+Expr* MemberAccessExpr::getObject() const { return object; }
+std::string MemberAccessExpr::getMemberName() const { return memberName; }
+void MemberAccessExpr::accept(Visitor* v) { v->visit(this); }
+
+StructLiteralExpr::StructLiteralExpr(const std::vector<Expr*>& values, int32_t line, int32_t column)
+    : Expr(line, column), values(values) {}
+std::vector<Expr*> StructLiteralExpr::getValues() const { return values; }
+void StructLiteralExpr::accept(Visitor* v) { v->visit(this); }
+
+Program::Program(const std::vector<ImportDecl*>& imports, const std::vector<VarDeclStmt*>& globals, const std::vector<FunctionDecl*>& functions, const std::vector<StructDecl*>& structs, int32_t line, int32_t column) 
+    : ASTNode(line, column), imports(imports), globals(globals), functions(functions), structs(structs) {}
 std::vector<ImportDecl*> Program::getImports() const { return imports; }
 std::vector<VarDeclStmt*> Program::getGlobals() const { return globals; }
 std::vector<FunctionDecl*> Program::getFunctions() const { return functions; }
+std::vector<StructDecl*> Program::getStructs() const { return structs; }
 void Program::accept(Visitor* v) { v->visit(this); }

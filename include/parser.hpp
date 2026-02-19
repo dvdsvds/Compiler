@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <set>
 #include "token.hpp"
 #include "ast.hpp"
 
@@ -51,6 +52,13 @@ class Parser {
         ImportDecl* parseImport();
         FunctionDecl* parseFunction();
         
+        StructDecl* parseStruct();
+        Stmt* parseStructVardecl();
+        Expr* parseStructLiteral();
+        bool isGlobalStructVar();
+
+        std::set<std::string> structName;
+
     public:
         Parser(const std::vector<TokenData>& tokens);
         bool isGlobalVar();

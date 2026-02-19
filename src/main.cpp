@@ -60,6 +60,7 @@ int main(int argc, char* argv[]) {
 
         std::vector<FunctionDecl*> allFunctions = program->getFunctions();
         std::vector<VarDeclStmt*> allGlobals = program->getGlobals();
+        std::vector<StructDecl*> allStructs = program->getStructs();
 
         fs::path dylibPath = getExePath().parent_path() / "dylib";
 
@@ -96,7 +97,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        Program* mergedProgram = new Program({}, allGlobals, allFunctions, 0, 0);
+        Program* mergedProgram = new Program({}, allGlobals, allFunctions, allStructs, 0, 0);
 
         SymbolTable symTable;
         SemanticAnalyzer analyzer(&symTable);

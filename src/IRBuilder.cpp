@@ -30,7 +30,7 @@ Operand* IRBuilder::visitLiteralExpr(LiteralExpr* node) {
         module->addStringLiteral(label, node->getValue());
         return Operand::createGlobal(label, Token::STRING);
     }
-    return Operand::createConstant(std::stoi(node->getValue()), node->getType());
+    return Operand::createConstant(std::stoi(node->getValue(), nullptr, 0), node->getType());
 }
 Operand* IRBuilder::visitVariableExpr(VariableExpr* node) {
     if(global_var_names.count(node->getName())) {
@@ -161,6 +161,36 @@ Operand* IRBuilder::visitUnaryExpr(UnaryExpr* node) {
 }
 Operand* IRBuilder::visitCallExpr(CallExpr* node) {
     std::string func_name = node->getFunctionName();
+
+    if(func_name == "csrr") {
+        Operand* csr_num = evaluateExpr(node->getArguments()[0]);
+        Operand* dest = newVirtualReg(Token::S32);
+        curr_block->addInstruction(IRInstruction::createCsrr(dest, csr_num));
+        return dest;
+    }
+    if(func_name == "csrw") {
+        Operand* csr_num = evaluateExpr(node->getArguments()[0]);
+        Operand* value = evaluateExpr(node->getArguments()[1]);
+        curr_block->addInstruction(IRInstruction::createCsrw(csr_num, value));
+        Operand* dummy = newVirtualReg(Token::S32);
+        return dummy;
+    }
+    if(func_name == "iret") {
+        curr_block->addInstruction(IRInstruction::createIret());
+        Operand* dummy = newVirtualReg(Token::S32);
+        return dummy;
+    }
+    if(func_name == "push_reg") {
+        Operand* reg = evaluateExpr(node->getArguments()[0]);
+        curr_block->addInstruction(IRInstruction::createPushReg(reg));
+        Operand* dummy = newVirtualReg(Token::S32);
+        return dummy;
+    }
+    if(func_name == "pop_reg") {
+        Operand* dest = newVirtualReg(Token::S32);
+        curr_block->addInstruction(IRInstruction::createPopReg(dest));
+        return dest;
+    }
 
     if(local_vars.count(func_name)) {
         Operand* fp = local_vars[func_name];

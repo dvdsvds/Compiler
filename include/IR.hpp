@@ -13,7 +13,8 @@ enum class IROpcode {
     COPY, PHI,
     SEND, RECV,
     OUT, IN,
-    PRINT
+    PRINT,
+    CSRR_OP, CSRW_OP, IRET_OP, PUSH_OP, POP_OP
 };
 
 enum class OperandType {
@@ -107,6 +108,11 @@ class IRInstruction {
         static IRInstruction* createPhi(Operand* dest, const std::vector<std::pair<Operand*, std::string>>& phi_operands);
         static IRInstruction* createBranch(Operand* condition, Operand* true_label);
         static IRInstruction* createPrint(Operand* value);
+        static IRInstruction* createCsrr(Operand* dest, Operand* csr_num);
+        static IRInstruction* createCsrw(Operand* csr_num, Operand* value);
+        static IRInstruction* createIret();
+        static IRInstruction* createPushReg(Operand* reg);
+        static IRInstruction* createPopReg(Operand* reg);
 
         IROpcode getOpcode() const;
         Operand* getDest() const;

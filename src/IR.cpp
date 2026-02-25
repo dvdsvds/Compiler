@@ -378,3 +378,19 @@ std::string IRModule::toString() const {
 void IRInstruction::addPhiOperand(Operand* value, const std::string& label) {
     phi_operands.push_back({value, label});
 }
+
+IRInstruction* IRInstruction::createCsrr(Operand* dest, Operand* csr_num) {
+    return new IRInstruction(IROpcode::CSRR_OP, dest, csr_num, nullptr, nullptr, {}, {});
+}
+IRInstruction* IRInstruction::createCsrw(Operand* csr_num, Operand* value) {
+    return new IRInstruction(IROpcode::CSRW_OP, nullptr, csr_num, value, nullptr, {}, {});
+}
+IRInstruction* IRInstruction::createIret() {
+    return new IRInstruction(IROpcode::IRET_OP, nullptr, nullptr, nullptr, nullptr, {}, {});
+}
+IRInstruction* IRInstruction::createPushReg(Operand* reg) {
+    return new IRInstruction(IROpcode::PUSH_OP, nullptr, reg, nullptr, nullptr, {}, {});
+}
+IRInstruction* IRInstruction::createPopReg(Operand* reg) {
+    return new IRInstruction(IROpcode::POP_OP, nullptr, reg, nullptr, nullptr, {}, {});
+}

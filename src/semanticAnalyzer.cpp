@@ -168,6 +168,8 @@ void SemanticAnalyzer::visit(BinaryExpr* node) {
         case Token::SHR_EQ:
             if(leftType == rightType) {
                 node->setType(leftType);
+            } else if(leftType == Token::S32 && rightType == Token::FUNC_PTR) {
+                node->setType(Token::S32);
             } else {
                 add_error({"Type mismatch in equality: operand types must match, got " + tokenToString(leftType) + " and " + tokenToString(rightType), errorType::TYPE_MISMATCH, node->get_line(), node->get_column()});
                 node->setType(Token::INVALID);
@@ -304,6 +306,14 @@ void SemanticAnalyzer::visit(UnaryExpr* node) {
 };
 
 void SemanticAnalyzer::visit(CallExpr* node) { 
+    std::string fn = node->getFunctionName();
+    if(fn == "csrr" || fn == "csrw" || fn == "iret" || fn == "push_reg" || fn == "pop_reg") {
+        for(auto& arg : node->getArguments()) {
+            arg->accept(this);
+        }
+        node->setType(Token::S32);
+        return;
+    }
     for(auto& argu : node->getArguments()) {
         argu->accept(this);
     }
@@ -522,6 +532,15 @@ void SemanticAnalyzer::visit(VarDeclStmt* node) {
             node->getInitializer()->accept(this);
         }
         TokenData varType = {Token::FUNC_PTR, "", node->get_line(), node->get_column()};
+        track_symbol->insert(node->getName(), {node->getName(), varType, track_symbol->curr_scope(), false, false});
+        return;
+    }
+
+    if(node->getType() == Token::PS8 || node->getType() == Token::PS16 || node->getType() == Token::PS32 || node->getType() == Token::PUS8 || node->getType() == Token::PUS16 || node->getType() == Token::PUS32) {
+        if(node->getInitializer() != nullptr) {
+            node->getInitializer()->accept(this);
+        }
+        TokenData varType = {node->getType(), "", node->get_line(), node->get_column()};
         track_symbol->insert(node->getName(), {node->getName(), varType, track_symbol->curr_scope(), false, false});
         return;
     }

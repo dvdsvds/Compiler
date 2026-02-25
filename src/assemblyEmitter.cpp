@@ -475,6 +475,9 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             if(instr->getSrc2()->isConstant()) {
                 output << "mov r29, " << instr->getSrc2()->constValue() << std::endl;
                 value_str = "r29";
+            } else if(instr->getSrc2()->isGlobal()) {
+                output << "mov r29, " << *instr->getSrc2()->globalName() << std::endl;
+                value_str = "r29";
             } else {
                 value_str = "r" + std::to_string(PhysicalReg(instr->getSrc2()));
             }
@@ -540,7 +543,9 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
                 output << "csrw r_temp, SP" << std::endl;
             }
 
+            output << "push r30" << std::endl;
             output << "call " << *funcName << std::endl;
+            output << "pop r30" << std::endl;
 
             if(args.size() > 8) {
                 output << "csrr r_temp, SP" << std::endl;
@@ -579,7 +584,9 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
             }
 
             std::string fp_reg = getOperandReg(fp);
+            output << "push r30" << std::endl;
             output << "callr " << fp_reg << std::endl;
+            output << "pop r30" << std::endl;
 
             std::vector<int> regs_vec(regs_to_save.begin(), regs_to_save.end());
             for(int i = regs_vec.size() - 1; i >= 0; i--) {
@@ -692,6 +699,49 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
                 output << "mov r28, 1" << std::endl;
             }
             output << "syscall" << std::endl;
+            break;
+        }
+        case IROpcode::CSRR_OP: {
+            int rd = PhysicalReg(instr->getDest());
+            int csr = instr->getSrc1()->constValue();
+            static const char* names[] = {
+                "EPC","CAUSE","STATUS","IVTBR","IMASK","IPENDING",
+                "SEPC","SSTATUS","SCRATCH","CYCLE",
+                "TPERIOD","TCONTROL","TCOUNTER","EFLAGS","SP"
+            };
+            std::string csr_name = (csr >= 0 && csr < 15) ? names[csr] : std::to_string(csr);
+            output << "csrr r" << rd << ", " << csr_name << std::endl;
+            break;
+        }
+        case IROpcode::CSRW_OP: {
+            int csr = instr->getSrc1()->constValue();
+            static const char* names[] = {
+                "EPC","CAUSE","STATUS","IVTBR","IMASK","IPENDING",
+                "SEPC","SSTATUS","SCRATCH","CYCLE",
+                "TPERIOD","TCONTROL","TCOUNTER","EFLAGS","SP"
+            };
+            std::string csr_name = (csr >= 0 && csr < 15) ? names[csr] : std::to_string(csr);
+            if(instr->getSrc2()->isConstant()) {
+                output << "mov r_temp, " << instr->getSrc2()->constValue() << std::endl;
+                output << "csrw " << csr_name << ", r_temp" << std::endl;
+            } else {
+                int rs = PhysicalReg(instr->getSrc2());
+                output << "csrw " << csr_name << ", r" << rs << std::endl;
+            }
+            break;
+        }
+        case IROpcode::PUSH_OP: {
+            int rs = instr->getSrc1()->constValue();
+            output << "push r" << rs << std::endl;
+            break;
+        }
+        case IROpcode::POP_OP: {
+            int rd = instr->getSrc1()->constValue();
+            output << "pop r" << rd << std::endl;
+            break;
+        }
+        case IROpcode::IRET_OP: {
+            output << "iret" << std::endl;
             break;
         }
         default: break;
@@ -934,9 +984,6 @@ void AssemblyEmitter::emitEpilogue(IRFunction* func) {
     }
 }
 bool AssemblyEmitter::isCallerSaved(int preg) {
-    // Caller-saved: r1-r15, r24-r28
-    // Callee-saved: r16-r23
-    // Special: r0 (zero), r29-r31 (temp/special)
     return (preg >= 1 && preg <= 15) || (preg >= 24 && preg <= 28);
 }
 std::set<int> AssemblyEmitter::getCallerSavedToPreserve(int call_idx) {
@@ -944,7 +991,6 @@ std::set<int> AssemblyEmitter::getCallerSavedToPreserve(int call_idx) {
     for(const auto& mapping : reg_assignment_info) {
         int vreg = mapping.first;
         int preg = mapping.second;
-        // Save if: caller-saved AND vreg is still used after this call
         if(isCallerSaved(preg) && vreg_last_use.count(vreg) && vreg_last_use[vreg] > call_idx) {
             regs_to_save.insert(preg);
         }

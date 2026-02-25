@@ -725,8 +725,8 @@ void AssemblyEmitter::emitInstruction(IRInstruction* instr) {
                 output << "mov r_temp, " << instr->getSrc2()->constValue() << std::endl;
                 output << "csrw " << csr_name << ", r_temp" << std::endl;
             } else {
-                int rs = PhysicalReg(instr->getSrc2());
-                output << "csrw " << csr_name << ", r" << rs << std::endl;
+                std::string reg = getOperandReg(instr->getSrc2());
+                output << "csrw " << csr_name << ", " << reg << std::endl;
             }
             break;
         }

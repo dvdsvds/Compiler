@@ -45,7 +45,10 @@ Token Parser::peek() {
 bool Parser::isGlobalVar() {
     Token t = peek();
 
-    if(t != Token::S32 && t != Token::S8 && t != Token::S16 && t != Token::US32 && t != Token::US8 && t != Token::US16 && t != Token::BOOL) {
+    if(t != Token::S32 && t != Token::S8 && t != Token::S16 && 
+       t != Token::US32 && t != Token::US8 && t != Token::US16 && t != Token::BOOL && 
+       t != Token::PS8 && t != Token::PS16 && t != Token::PS32 &&
+       t != Token::PUS8 && t != Token::PUS16 && t != Token::PUS32 && t != Token::FUNC_PTR) {
         return false;
     }
     if(curr_pos + 1 >= tokens.size()) return false;
@@ -900,8 +903,11 @@ bool Parser::isGlobalStructVar() {
         if(tokens[curr_pos + 1].type == Token::IDENTIFIER) return true;
         if(tokens[curr_pos + 1].type == Token::LBRACKET) return true;
     }
-    if(tokens[curr_pos + 1].type == Token::IDENTIFIER) return true;
-    if(tokens[curr_pos + 1].type == Token::LBRACKET) return true;
-    if(tokens[curr_pos + 1].type == Token::STAR) return true;
+    if(peek() == Token::PSTRUCT_T){
+        if(curr_pos + 1 >= tokens.size()) return false;
+        if(tokens[curr_pos + 1].type == Token::IDENTIFIER) return true;
+        if(tokens[curr_pos + 1].type == Token::LBRACKET) return true;
+        if(tokens[curr_pos + 1].type == Token::STAR) return true;
+    }
     return false;
 }

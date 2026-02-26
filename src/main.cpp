@@ -29,13 +29,26 @@ fs::path getExePath() {
 
 int main(int argc, char* argv[]) {
     if(argc < 2) {
-        std::cerr << "Usage: dyc <input.dy>" << std::endl;
+        std::cerr << "Usage: dyc <input.dy> [--lib <path>]" << std::endl;
         return 1;
     }
 
-    std::ifstream input(argv[1]);
+    std::string inputName = "";
+    for(int i = 1; i < argc; i++) {
+        if(std::string(argv[i]) == "--lib") {
+            i++;
+        } else {
+            inputName = argv[i];
+        }
+    }
+    if(inputName.empty()) {
+        std::cerr << "Usage: dyc <input.dy> [--lib <path>]" << std::endl;
+        return 1;
+    }
+
+    std::ifstream input(inputName);
     if(!input.is_open()) {
-        std::cerr << "Failed to open: " << argv[1] << std::endl;
+        std::cerr << "Failed to open: " << inputName << std::endl;
         return 1;
     }
 
@@ -44,7 +57,6 @@ int main(int argc, char* argv[]) {
     std::string source = buffer.str();
     input.close();
 
-    std::string inputName = argv[1];
     std::string outputName;
     size_t dot = inputName.rfind('.');
     if(dot != std::string::npos) {
@@ -72,6 +84,12 @@ int main(int argc, char* argv[]) {
         std::set<std::string> importedModules;
 
         fs::path dylibPath = getExePath().parent_path() / "dylib";
+        for(int i = 1; i < argc; i++) {
+            if(std::string(argv[i]) == "--lib" && i + 1 < argc) {
+                dylibPath = fs::path(argv[i + 1]);
+                break;
+            }
+        }
 
         for(ImportDecl* imp : program->getImports()) {
             fs::path modulePath = dylibPath / (imp->getModuleName() + ".dy");

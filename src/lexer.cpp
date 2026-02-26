@@ -38,6 +38,7 @@ Lexer::Lexer(const std::string& src) : source(src), pos(0), line(1), column(0) {
     keywords["true"] = Token::TRUE;
     keywords["false"] = Token::FALSE;
     keywords["void"] = Token::VOID;
+    keywords["global"] = Token::GLOBAL;
 }
 
 char Lexer::current_char() {

@@ -43,7 +43,12 @@ Token Parser::peek() {
 }
 
 bool Parser::isGlobalVar() {
-    Token t = peek();
+    size_t check_pos = curr_pos;
+    if(check_pos < tokens.size() && tokens[check_pos].type == Token::GLOBAL) {
+        check_pos++;
+    }
+
+    Token t = tokens[check_pos].type;
 
     if(t != Token::S32 && t != Token::S8 && t != Token::S16 && 
        t != Token::US32 && t != Token::US8 && t != Token::US16 && t != Token::BOOL && 
@@ -51,12 +56,12 @@ bool Parser::isGlobalVar() {
        t != Token::PUS8 && t != Token::PUS16 && t != Token::PUS32 && t != Token::FUNC_PTR) {
         return false;
     }
-    if(curr_pos + 1 >= tokens.size()) return false;
-    if(tokens[curr_pos + 1].type != Token::IDENTIFIER) return false;
-    if(curr_pos + 2 >= tokens.size()) return true;
-    return tokens[curr_pos + 2].type != Token::LPAREN;
-
+    if(check_pos + 1 >= tokens.size()) return false;
+    if(tokens[check_pos + 1].type != Token::IDENTIFIER) return false;
+    if(check_pos + 2 >= tokens.size()) return true;
+    return tokens[check_pos + 2].type != Token::LPAREN;
 }
+
 Token Parser::advance() {
     if(isAtEnd()) {
         return Token::EOF_TOKEN;
@@ -473,6 +478,12 @@ Stmt* Parser::parseStatement() {
 }
 
 Stmt* Parser::parseVardecl() {
+    bool isGlobalDecl = false;
+    if(check(Token::GLOBAL)) {
+        isGlobalDecl = true;
+        advance();
+    }
+
     uint32_t array_size = 0;
     int32_t line = getLine();
     int32_t column = getColumn();
@@ -522,7 +533,9 @@ Stmt* Parser::parseVardecl() {
         }     
     }
     expect(Token::SEMICOLON);
-    return new VarDeclStmt(type, variableName, "", initializer, 0, false, line, column);
+    VarDeclStmt* node = new VarDeclStmt(type, variableName, "", initializer, 0, false, line, column);
+    node->setIsGlobal(isGlobalDecl);
+    return node;
 }
 
 Stmt* Parser::parseIfStmt() {

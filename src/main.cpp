@@ -5,6 +5,7 @@
 #include "IRBuilder.hpp"
 #include "IR.hpp"
 #include "assemblyEmitter.hpp"
+#include <set>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -62,6 +63,14 @@ int main(int argc, char* argv[]) {
         std::vector<VarDeclStmt*> allGlobals = program->getGlobals();
         std::vector<StructDecl*> allStructs = program->getStructs();
 
+        std::set<std::string> globalDeclNames;
+        for(VarDeclStmt* g : program->getGlobals()) {
+            if(g->isGlobal()) {
+                globalDeclNames.insert(g->getName());
+            }
+        }
+        std::set<std::string> importedModules;
+
         fs::path dylibPath = getExePath().parent_path() / "dylib";
 
         for(ImportDecl* imp : program->getImports()) {
@@ -95,7 +104,21 @@ int main(int argc, char* argv[]) {
                     allFunctions.push_back(func);
                 }
             }
+            if(importedModules.find(imp->getModuleName()) == importedModules.end()) {
+                importedModules.insert(imp->getModuleName());
+                for(VarDeclStmt* g : moduleProgram->getGlobals()) {
+                    if(g->isGlobal()) {
+                        if(globalDeclNames.count(g->getName())) {
+                            std::cerr << "Error: Global variable '" << g->getName() << "' already declared" << std::endl;
+                            return 1;
+                        }
+                        globalDeclNames.insert(g->getName());
+                        allGlobals.push_back(g);
+                    }
+                }
+            } 
         }
+
 
         Program* mergedProgram = new Program({}, allGlobals, allFunctions, allStructs, 0, 0);
 

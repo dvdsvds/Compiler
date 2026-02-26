@@ -72,7 +72,7 @@ uint32_t ArrayExpr::getArraySize() const { return array_size; }
 void ArrayExpr::accept(Visitor* v) { v->visit(this); }
 
 VarDeclStmt::VarDeclStmt(Token type, const std::string& name, const std::string& struct_name, Expr* initializer, uint32_t array_size, bool isPointerType, int32_t line, int32_t column) 
-    : Stmt(line, column), type(type), name(name), struct_name(struct_name), initializer(initializer), address_taken(false), array_size(array_size), isPointerType(isPointerType) {}
+    : Stmt(line, column), type(type), name(name), struct_name(struct_name), initializer(initializer), address_taken(false), array_size(array_size), isPointerType(isPointerType), isGlobalDecl(false) {}
 Token VarDeclStmt::getType() const { return type; }
 std::string VarDeclStmt::getName() const { return name; }
 std::string VarDeclStmt::getStructName() const { return struct_name; }
@@ -82,6 +82,8 @@ bool VarDeclStmt::isAddressTaken() const { return address_taken; }
 bool VarDeclStmt::isPointer() const { return isPointerType; }
 void VarDeclStmt::setAddressTaken(bool taken) { address_taken = taken; }
 void VarDeclStmt::accept(Visitor* v) { v->visit(this); }
+bool VarDeclStmt::isGlobal() const { return isGlobalDecl; }
+void VarDeclStmt::setIsGlobal(bool g) { isGlobalDecl = g; }
 
 AssignStmt::AssignStmt(Expr* target, Expr* value, int32_t line, int32_t column) 
     : Stmt(line, column), target(target), value(value) {}

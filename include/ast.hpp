@@ -152,6 +152,7 @@ class VarDeclStmt : public Stmt {
         bool address_taken;
         uint32_t array_size;
         bool isPointerType;
+        bool isGlobalDecl;
     public:
         VarDeclStmt(Token type, const std::string& name, const std::string& struct_name, Expr* initializer, uint32_t array_size, bool isPointerType, int32_t line, int32_t column);
         Token getType() const;
@@ -163,6 +164,8 @@ class VarDeclStmt : public Stmt {
         bool isAddressTaken() const;
         void setAddressTaken(bool taken);
         void accept(Visitor* v) override;
+        bool isGlobal() const;
+        void setIsGlobal(bool g);
 };
 
 class AssignStmt : public Stmt {
